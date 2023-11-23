@@ -56,9 +56,9 @@ pub fn scan_pair(
                                     //      byte offset after last byte in last matching char (aka number of bytes matched)
                                     //      char offset after last matching char (aka number of utf-8 chars matched)
 {
-    let (matched, bytes, chars, lines) = context;
-    if (!matched) || bytes > s.len() {
-        return (false, bytes, chars, lines)
+    let (matched, position) = context;
+    if (!matched) || position.byte_index > s.len(){
+        return (false, position)
     }
 
     // scanner_right.scan(s, scanner_left.scan(s, context))
@@ -99,9 +99,9 @@ fn scan_sequence<T>(
         T: IntoIterator,
         T::Item: Scanner
 {
-    let (matched, bytes, chars, lines) = context;
-    if (!matched) || bytes > s.len() {
-        return (false, bytes, chars, lines)
+    let (matched, position) = context;
+    if (!matched) || position.byte_index > s.len(){
+        return (false, position)
     }
 
     let mut scanned = context;
@@ -116,7 +116,7 @@ fn scan_sequence<T>(
 
 #[cfg(test)]
 mod tests {
-    use crate::scan::scan::{scan_one_or_more_chars, scan_zero_or_more_chars, scan_n_chars};
+    use crate::scan::scan::{scan_one_or_more_chars, scan_zero_or_more_chars, scan_n_chars, ScanPosition};
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn test_scan_pair_ok() {
         let s = "foo123bar_doo_2";
-        let context = (true, 0, 0, 0);
+        let context = (true, ScanPosition::default());
 
         //
         // scan one or more alphabetic characters
@@ -144,7 +144,7 @@ mod tests {
         // scan variable name that starts with alphabetic the zero or more alphanumerics
         //
         let result = scan_pair(s, context, scan_one_or_more_alphabetic as ScannerFn, scan_zero_or_more_alphanumeric as ScannerFn);
-        assert_eq!((true, "foo123bar".len(), 9, 0), result);
+        assert_eq!((true, ScanPosition::new("foo123bar".len(), 9, 0, 0, 0)), result);
 
         //
         // scan with closure's coerced to function
@@ -152,7 +152,7 @@ mod tests {
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
         let result = scan_pair(s, context, scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric);
-        assert_eq!((true, "foo123bar".len(), 9, 0), result);
+        assert_eq!((true, ScanPosition::new("foo123bar".len(), 9, 0, 0, 0)), result);
 
     }
 
@@ -164,18 +164,18 @@ mod tests {
         // offset beyond end of string will not match
         // and will return the byte and char indices unchanged.
         //
-        let context = (true, s.len() + 69, s.chars().count() + 69, 0);
+        let context = (true, ScanPosition::new(s.len() + 69, s.chars().count() + 69, 0, 0, 0));
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
         let result = scan_pair(s, context, scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric);
-        assert_eq!((false, context.1, context.2, context.3), result);
+        assert_eq!((false, context.1), result);
 
         //
         // scanning zero out of range will not match
         //
         let scan_0_chars: ScannerFn = |s, c| scan_n_chars(s, c, 0, |ch| ch.is_alphanumeric());
         let result = scan_pair(s, context, scan_0_chars, scan_0_chars);
-        assert_eq!((false, context.1, context.2, context.3), result);
+        assert_eq!((false, context.1), result);
     }
 
     #[test]
@@ -186,24 +186,24 @@ mod tests {
         // offset at end of input is no match,
         // returning byte offset and char offset unchanged.
         //
-        let context = (true, s.len(), s.chars().count(), 0);
+        let context = (true, ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0));
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
         let result = scan_pair(s, context, scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric);
-        assert_eq!((false, s.len(), s.chars().count(), 0), result);
+        assert_eq!((false, ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0)), result);
 
         //
         // scanning zero at end of input will still match
         //
         let scan_0_chars: ScannerFn = |s, c| scan_n_chars(s, c, 0, |ch| ch.is_alphanumeric());
         let result = scan_pair(s, context, scan_0_chars, scan_0_chars);
-        assert_eq!((true, s.len(), s.chars().count(), 0), result);
+        assert_eq!((true, ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0)), result);
     }
 
     #[test]
     fn test_scan_pair_lines_ok() {
         let s = "foo\nbar\r\nbaz\r\n";
-        let context = (true, 0, 0, 0);
+        let context = (true, ScanPosition::default());
 
         //
         // count number of alphabetic runs followed by new line
@@ -228,21 +228,21 @@ mod tests {
 
         // scan first line
         let result = scan_pair(s, context, scan_1_or_more_alphabetic, scan_line_ending);
-        assert_eq!((true, "foo\n".len(), "foo\n".chars().count(), 1), result);
+        assert_eq!((true, ScanPosition::new("foo\n".len(), "foo\n".chars().count(), 1, "foo\n".len(), "foo\n".chars().count())), result);
 
         // scan second line
         let result = scan_pair(s, result, scan_1_or_more_alphabetic, scan_line_ending);
-        assert_eq!((true, "foo\nbar\r\n".len(), "foo\nbar\r\n".chars().count(), 2), result);
+        assert_eq!((true, ScanPosition::new("foo\nbar\r\n".len(), "foo\nbar\r\n".chars().count(), 2, "foo\nbar\r\n".len(), "foo\nbar\r\n".chars().count())), result);
 
         // scan last line
         let result = scan_pair(s, result, scan_1_or_more_alphabetic, scan_line_ending);
-        assert_eq!((true, s.len(), s.chars().count(), 3), result);
+        assert_eq!((true, ScanPosition::new(s.len(), s.chars().count(), 3, s.len(), s.chars().count())), result);
     }
 
     #[test]
     fn test_scan_sequence_ok() {
         let s = "foo123bar_doo_2";
-        let context = (true, 0, 0, 0);
+        let context = (true, ScanPosition::default());
 
         //
         // scan one or more alphabetic characters
@@ -262,7 +262,7 @@ mod tests {
         // scan variable name that starts with alphabetic the zero or more alphanumerics
         //
         let result = scan_sequence(s, context, [scan_one_or_more_alphabetic, scan_zero_or_more_alphanumeric]);
-        assert_eq!((true, "foo123bar".len(), 9, 0), result);
+        assert_eq!((true, ScanPosition::new("foo123bar".len(), 9, 0, 0, 0)), result);
 
         //
         // with non-capturing closures coerced to function
@@ -270,7 +270,7 @@ mod tests {
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
         let result = scan_sequence(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
-        assert_eq!((true, "foo123bar".len(), 9, 0), result);
+        assert_eq!((true, ScanPosition::new("foo123bar".len(), 9, 0, 0, 0)), result);
     }
 
     #[test]
@@ -281,11 +281,11 @@ mod tests {
         // offset beyond end of string will not match
         // and will return the byte and char indices unchanged.
         //
-        let context = (true, s.len() + 69, s.chars().count() + 69, 0);
+        let context = (true, ScanPosition::new(s.len() + 69, s.chars().count() + 69, 0, 0, 0));
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
         let result = scan_sequence(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
-        assert_eq!((false, context.1, context.2, context.3), result)
+        assert_eq!((false, context.1), result)
     }
 
     #[test]
@@ -296,24 +296,24 @@ mod tests {
         // offset at end of input is no match,
         // returning byte offset and char offset unchanged.
         //
-        let context = (true, s.len(), s.chars().count(), 0);
+        let context = (true, ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0));
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
         let result = scan_sequence(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
-        assert_eq!((false, context.1, context.2, context.3), result);
+        assert_eq!((false, context.1), result);
 
         //
         // scanning zero at end of input will still match
         //
         let scan_0_chars: ScannerFn = |s, c| scan_n_chars(s, c, 0, |ch| ch.is_alphanumeric());
         let result = scan_sequence(s, context, [scan_0_chars, scan_0_chars]);
-        assert_eq!((true, s.len(), s.chars().count(), 0), result);
+        assert_eq!((true, ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0)), result);
     }
 
     #[test]
     fn test_scan_sequence_lines_ok() {
         let s = "foo\nbar\r\nbaz\r\n";
-        let context = (true, 0, 0, 0);
+        let context = (true, ScanPosition::default());
 
         //
         // scanner for a line
@@ -328,6 +328,6 @@ mod tests {
         // scan 3 lines
         //
         let result = scan_sequence(s, context, [scan_line, scan_line, scan_line]);
-        assert_eq!((true, s.len(), s.chars().count(), 3), result);
+        assert_eq!((true, ScanPosition::new(s.len(), s.chars().count(), 3, s.len(), s.chars().count())), result);
     }
 }
