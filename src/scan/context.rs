@@ -6,27 +6,27 @@
 //! ```rust
 //! #[test]
 //! fn test_scan_chars_ok_sequentially() {
-//!     let s = "foo_bar";
-//!     let context = (true, 0, 0, 0);
+//!     let s = "foo\nbar";
+//!     let context = (true, ScanPosition::default());
 //!
 //!     //
 //!     // scan the first 'f' character using a lambda
 //!     //
 //!     let result = scan_one_or_more_chars(s, context, |ch| ch == 'f');
-//!     assert_eq!((true, 'f'.len_utf8(), 1, 0), result);
+//!     assert_eq!((true, ScanPosition::new('f'.len_utf8(), 1, 0, 0, 0)), result);
 //!
 //!     //
 //!     // scan the 'o' characters starting from last scan result
 //!     //
 //!     let result = scan_one_or_more_chars(s, result, |ch| ch == 'o');
-//!     assert_eq!((true, "foo".len(), 3, 0), result);
+//!     assert_eq!((true, ScanPosition::new("foo".len(), 3, 0, 0, 0)), result);
 //!
 //!     //
 //!     // scan the remaining underscore and alphabetic characters
-//!     // starting from the last scan result.
+//!     // starting from the last can result.
 //!     //
-//!     let result = scan_zero_or_more_chars(s, result, |ch| ch == '_' || ch.is_alphabetic());
-//!     assert_eq!((true, "foo_bar".len(), "foo_bar".chars().count(), 0), result);
+//!     let result = scan_zero_or_more_chars(s, result, |ch| ch == '\n' || ch.is_alphabetic());
+//!     assert_eq!((true, ScanPosition::new(s.len(), s.chars().count(), 1, "foo\n".len(), "foo\n".chars().count())), result);
 //!
 //!     //
 //!     // do the same thing in one function call
@@ -37,8 +37,8 @@
 //!                             context,
 //!                             |ch| ch == 'f'),
 //!                         |ch| ch == 'o'),
-//!                     |ch| ch == '_' || ch.is_alphabetic());
-//!     assert_eq!((true, "foo_bar".len(), "foo_bar".chars().count(), 0), result);
+//!                     |ch| ch == '\n' || ch.is_alphabetic());
+//!     assert_eq!((true, ScanPosition::new(s.len(), s.chars().count(), 1, "foo\n".len(), "foo\n".chars().count())), result);
 //! }
 //! ```
 //!
@@ -50,7 +50,7 @@ const NEWLINE_LEN: usize = NEWLINE.len_utf8();
 ///
 /// scan position at byte index, char index and line index.
 ///
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ScanPosition {
     pub byte_index: usize,      // index in bytes
     pub char_index: usize,      // index in utf-8 characters

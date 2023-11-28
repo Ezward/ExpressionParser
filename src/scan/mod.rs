@@ -3,4 +3,4 @@
 //! Allows for combining simple scanners to scan more complex spans.
 //!
 pub mod scanner;
-pub mod scan;
+pub mod context;

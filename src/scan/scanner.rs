@@ -1,7 +1,7 @@
 //!
 //! Higher order scanners using the [Scanner] trait.
 //!
-use super::scan::ScanContext;
+use super::context::ScanContext;
 
 ///
 /// A scanner function pointer that takes a string slice to
@@ -116,7 +116,7 @@ fn scan_sequence<T>(
 
 #[cfg(test)]
 mod tests {
-    use crate::scan::scan::{scan_one_or_more_chars, scan_zero_or_more_chars, scan_n_chars, ScanPosition};
+    use crate::scan::context::{scan_one_or_more_chars, scan_zero_or_more_chars, scan_n_chars, ScanPosition};
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
