@@ -7,8 +7,8 @@ use crate::scan::context::{
     scan_zero_or_more_chars
 };
 
-use crate::parse::position::ParsePosition;
-use crate::parse::error::ParsingError;
+use crate::expression::position::ParsePosition;
+use crate::expression::error::ParsingError;
 
 use super::expression::ExpressionNode;
 use super::value::SignType;
@@ -96,7 +96,7 @@ fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode
     //
     // skip any leading whitespace
     //
-    let (mut matched, start_position) = parse_whitespace(s, context)?;
+    let (mut _matched, start_position) = parse_whitespace(s, context)?;
 
     //
     // parse the optional negation
@@ -106,7 +106,7 @@ fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode
     //
     // scan the required integer part
     //
-    (matched, position) = expect_match(s, start_position, scan_digits(s, (true, position)))?;
+    (_matched, position) = expect_match(s, start_position, scan_digits(s, (true, position)))?;
 
     //
     // scan the optional decimal part
@@ -114,7 +114,7 @@ fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode
     let mut is_decimal = false;
     (is_decimal, position) = scan_literal(s, (true, position), ".");
     if is_decimal {
-        (matched, position) = expect_match(s, start_position, scan_digits(s, (true, position)))?;
+        (_matched, position) = expect_match(s, start_position, scan_digits(s, (true, position)))?;
     }
 
     //
@@ -125,7 +125,7 @@ fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode
         (has_exponent, exponent_position) = scan_literal(s, (true, position), "E");
     }
     if has_exponent {
-        (matched, position) = expect_match(s, start_position, scan_digits(s, (true, exponent_position)))?;
+        (_matched, position) = expect_match(s, start_position, scan_digits(s, (true, exponent_position)))?;
     }
 
     //
@@ -173,8 +173,11 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode)
         //
         let number_node: ParseNode;
         ((matched, position), number_node) = parse_number(s, (true, position))?;
-        (matched, position) = parse_whitespace(s, (true, position))?;
-        (matched, position) = expect_match(s, start_position, scan_literal(s, (true, position), ")"))?;
+
+        //
+        // scan the required closing parenthesis
+        //
+        (matched, position) = expect_match(s, start_position, scan_literal(s, parse_whitespace(s, (true, position))?, ")"))?;
 
         Ok(((true, position), ParseNode {
             position: ParsePosition::new(&start_position, &position),
@@ -183,7 +186,8 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode)
 
     } else {
         //
-        // if it's not a parenthesis, then it must be a number
+        // if it's not a parenthesis, then it must be a number.
+        // start at the optional negation
         //
         parse_number(s, (true, start_position))
     }
@@ -191,7 +195,7 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode)
 
 #[cfg(test)]
 mod parse_tests {
-    use crate::parse::value::{DecimalType, IntegerType, SignType};
+    use crate::expression::value::{DecimalType, IntegerType, SignType};
 
     use super::*;
 

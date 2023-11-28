@@ -1,5 +1,5 @@
 pub mod scan;
-pub mod parse;
+pub mod expression;
 
 fn main() {
     println!("Hello, world!");

@@ -29,6 +29,10 @@ impl Display for ExpressionValue {
         }
     }
 }
+
+///
+/// ExpressionValue * ExpressionValue = ExpressionValue
+///
 impl std::ops::Mul for ExpressionValue {
     type Output = ExpressionValue;
 
@@ -49,6 +53,9 @@ impl std::ops::Mul for ExpressionValue {
     }
 }
 
+///
+/// ExpressionValue * SignType = ExpressionValue
+///
 impl std::ops::Mul<SignType> for ExpressionValue {
     type Output = ExpressionValue;
 
@@ -64,7 +71,10 @@ impl std::ops::Mul<SignType> for ExpressionValue {
     }
 }
 
-impl std::ops::Mul<ExpressionValue> for SignType {
+///
+/// &SignType * ExpressionValue = ExpressionValue
+///
+impl std::ops::Mul<ExpressionValue> for &SignType {
     type Output = ExpressionValue;
 
     fn mul(self, rhs: ExpressionValue) -> Self::Output {
@@ -78,13 +88,6 @@ impl std::ops::Mul<ExpressionValue> for SignType {
         }
     }
 }
-impl std::ops::Mul<ExpressionValue> for &SignType {
-    type Output = ExpressionValue;
-
-    fn mul(self, rhs: ExpressionValue) -> Self::Output {
-        self.deref() * rhs
-    }
-}
 
 
 #[derive(Debug, Clone, PartialEq)]
@@ -92,6 +95,10 @@ pub enum SignType {
     Negative = -1,
     Positive = 1
 }
+///
+/// true -> SignType::Positive
+/// false -> SignType::Negative
+///
 impl From<bool> for SignType {
     fn from(value: bool) -> Self {
         if value {
