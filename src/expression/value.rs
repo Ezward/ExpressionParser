@@ -31,9 +31,125 @@ impl Display for ExpressionValue {
 }
 
 ///
+/// ExpressionValue + ExpressionValue = ExpressionValue
+///
+// impl std::ops::Add for ExpressionValue {
+//     type Output = ExpressionValue;
+
+//     fn add(self, rhs: Self) -> Self::Output {
+//         &self + &rhs
+//         // match self {
+//         //     ExpressionValue::NaN => ExpressionValue::NaN,
+//         //     ExpressionValue::Decimal { value: decimal_value } => match rhs {
+//         //         ExpressionValue::NaN => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: decimal_value + value },
+//         //         ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value + (value as DecimalType)},
+//         //     },
+//         //     ExpressionValue::Integer { value: integer_value } => match rhs {
+//         //         ExpressionValue::NaN => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: integer_value as DecimalType + value },
+//         //         ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: integer_value + value},
+//         //     },
+//         // }
+//     }
+// }
+impl std::ops::Add for &ExpressionValue {
+    type Output = ExpressionValue;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match self {
+            ExpressionValue::NaN => ExpressionValue::NaN,
+            ExpressionValue::Decimal { value: decimal_value } => match rhs {
+                ExpressionValue::NaN => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: decimal_value + value },
+                ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value + (*value as DecimalType)},
+            },
+            ExpressionValue::Integer { value: integer_value } => match rhs {
+                ExpressionValue::NaN => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: *integer_value as DecimalType + value },
+                ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: integer_value + value},
+            },
+        }
+    }
+}
+impl std::ops::AddAssign for ExpressionValue {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = &*self + &rhs
+    }
+}
+
+///
+/// ExpressionValue - ExpressionValue = ExpressionValue
+///
+// impl std::ops::Sub for ExpressionValue {
+//     type Output = ExpressionValue;
+
+//     fn sub(self, rhs: Self) -> Self::Output {
+//         &self + &rhs
+//         // match self {
+//         //     ExpressionValue::NaN => ExpressionValue::NaN,
+//         //     ExpressionValue::Decimal { value: decimal_value } => match rhs {
+//         //         ExpressionValue::NaN => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: decimal_value - value },
+//         //         ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value - (value as DecimalType)},
+//         //     },
+//         //     ExpressionValue::Integer { value: integer_value } => match rhs {
+//         //         ExpressionValue::NaN => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: integer_value as DecimalType - value },
+//         //         ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: integer_value - value},
+//         //     },
+//         // }
+//     }
+// }
+impl std::ops::Sub for &ExpressionValue {
+    type Output = ExpressionValue;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match self {
+            ExpressionValue::NaN => ExpressionValue::NaN,
+            ExpressionValue::Decimal { value: decimal_value } => match rhs {
+                ExpressionValue::NaN => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: decimal_value - value },
+                ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value - (*value as DecimalType)},
+            },
+            ExpressionValue::Integer { value: integer_value } => match rhs {
+                ExpressionValue::NaN => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: *integer_value as DecimalType - value },
+                ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: integer_value - value},
+            },
+        }
+    }
+}
+impl std::ops::SubAssign for ExpressionValue {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = &*self - &rhs
+    }
+}
+
+///
 /// ExpressionValue * ExpressionValue = ExpressionValue
 ///
-impl std::ops::Mul for ExpressionValue {
+// impl std::ops::Mul for ExpressionValue {
+//     type Output = ExpressionValue;
+
+//     fn mul(self, rhs: Self) -> Self::Output {
+//         &self + &rhs
+//         // match self {
+//         //     ExpressionValue::NaN => ExpressionValue::NaN,
+//         //     ExpressionValue::Decimal { value: decimal_value } => match rhs {
+//         //         ExpressionValue::NaN => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: decimal_value * value },
+//         //         ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value * (value as DecimalType)},
+//         //     },
+//         //     ExpressionValue::Integer { value: integer_value } => match rhs {
+//         //         ExpressionValue::NaN => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: integer_value as DecimalType * value },
+//         //         ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: integer_value * value},
+//         //     },
+//         // }
+//     }
+// }
+impl std::ops::Mul for &ExpressionValue {
     type Output = ExpressionValue;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -42,14 +158,74 @@ impl std::ops::Mul for ExpressionValue {
             ExpressionValue::Decimal { value: decimal_value } => match rhs {
                 ExpressionValue::NaN => ExpressionValue::NaN,
                 ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: decimal_value * value },
-                ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value * (value as DecimalType)},
+                ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value * (*value as DecimalType)},
             },
             ExpressionValue::Integer { value: integer_value } => match rhs {
                 ExpressionValue::NaN => ExpressionValue::NaN,
-                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: integer_value as DecimalType * value },
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: *integer_value as DecimalType * value },
                 ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: integer_value * value},
             },
         }
+    }
+}
+impl std::ops::MulAssign for ExpressionValue {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = &*self * &rhs
+    }
+}
+///
+/// ExpressionValue / ExpressionValue = ExpressionValue
+///
+// impl std::ops::Div for ExpressionValue {
+//     type Output = ExpressionValue;
+
+//     fn div(self, rhs: Self) -> Self::Output {
+//         &self + &rhs
+//         // match self {
+//         //     ExpressionValue::NaN => ExpressionValue::NaN,
+//         //     ExpressionValue::Decimal { value: decimal_value } => match rhs {
+//         //         ExpressionValue::NaN => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } if value == 0.0 => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: decimal_value / value },
+//         //         ExpressionValue::Integer { value: 0 } => ExpressionValue::NaN,
+//         //         ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value / (value as DecimalType)},
+//         //     },
+//         //     ExpressionValue::Integer { value: integer_value } => match rhs {
+//         //         ExpressionValue::NaN => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } if value == 0.0  => ExpressionValue::NaN,
+//         //         ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: integer_value as DecimalType / value },
+//         //         ExpressionValue::Integer { value: 0 } => ExpressionValue::NaN,
+//         //         ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: integer_value / value},
+//         //     },
+//         // }
+//     }
+// }
+impl std::ops::Div for &ExpressionValue {
+    type Output = ExpressionValue;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        match self {
+            ExpressionValue::NaN => ExpressionValue::NaN,
+            ExpressionValue::Decimal { value: decimal_value } => match rhs {
+                ExpressionValue::NaN => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } if *value == 0.0 => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: decimal_value / value },
+                ExpressionValue::Integer { value: 0 } => ExpressionValue::NaN,
+                ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: decimal_value / (*value as DecimalType)},
+            },
+            ExpressionValue::Integer { value: integer_value } => match rhs {
+                ExpressionValue::NaN => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } if *value == 0.0  => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: *integer_value as DecimalType / value },
+                ExpressionValue::Integer { value: 0 } => ExpressionValue::NaN,
+                ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: integer_value / value},
+            },
+        }
+    }
+}
+impl std::ops::DivAssign for ExpressionValue {
+    fn div_assign(&mut self, rhs: Self) {
+        *self = &*self / &rhs
     }
 }
 
