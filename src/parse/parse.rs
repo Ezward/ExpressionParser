@@ -1197,3 +1197,199 @@ mod parse_tests {
     }
 
 }
+#[cfg(test)]
+mod evaluation_tests {
+    use crate::{parse::{value::{DecimalType, ExpressionValue}, expression::Evaluate}, scan::context::beginning};
+
+    use super::*;
+
+    #[test]
+    fn test_evaluate_integer() {
+        let s = "1234";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: 1234 });
+    }
+
+    #[test]
+    fn test_evaluate_negative_integer() {
+        let s = "-1234";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: -1234 });
+    }
+
+    #[test]
+    fn test_evaluate_decimal() {
+        let s = "1234.0";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 1234 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_negative_decimal() {
+        let s = "-1234.0";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: -1234 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_scientific() {
+        let s = "1234e0";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 1234 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_negative_scientific() {
+        let s = "-1234E0";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: -1234 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_parenthesis() {
+        let s = "(1234)";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: 1234 });
+    }
+
+    #[test]
+    fn test_evaluate_negative_parenthesis() {
+        let s = "-(1234)";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: -1234 });
+    }
+
+    #[test]
+    fn test_evaluate_integer_sum() {
+        let s = " 1 + 2 + 3 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: 6 });
+    }
+
+    #[test]
+    fn test_evaluate_decimal_sum() {
+        let s = " 1 + 2 + 3.0 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 6 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_integer_difference() {
+        let s = " 1 - 2 - 3 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: -4 });
+    }
+
+    #[test]
+    fn test_evaluate_decimal_difference() {
+        let s = " 1 - 2 - 3.0 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: -4 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_integer_product() {
+        let s = " 1 * 2 * 3 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: 6 });
+    }
+
+    #[test]
+    fn test_evaluate_decimal_product() {
+        let s = " 1 * 2 * 3.0 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 6 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_integer_quotient() {
+        let s = " 3 / 2 / 1";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: 1 });
+    }
+
+    #[test]
+    fn test_evaluate_decimal_quotient() {
+        let s = " 3.0 / 2 / 1.0 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 1.5 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_integer_power() {
+        let s = " 3^2";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: 9 });
+
+        let s = " 3^0";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: 1 });
+
+        let s = " 3^-1";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: 0 });
+    }
+
+    #[test]
+    fn test_evaluate_decimal_power() {
+        let s = " 3.0^2 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 9 as DecimalType });
+
+        let s = " 3.0^2.0 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 9 as DecimalType });
+
+        let s = " 3^2.0 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 9 as DecimalType });
+
+        let s = " 3.0^0 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 1 as DecimalType });
+
+        let s = " 2.0^-1 ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: 0.5 as DecimalType });
+    }
+
+    #[test]
+    fn test_evaluate_integer_expression() {
+        let s = " (((10 + 5) * -6) - -20 / -2 * 3 + -((5*2)^2) - (-5 * -2 * 5)) ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Integer { value: -270 });
+    }
+
+    #[test]
+    fn test_evaluate_decimal_expression() {
+        let s = " (((10 + 5) * -6) - -20.0 / -2 * 3 + -((5*2)^2) - (-5 * -2 * 5)) ";
+
+        let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
+        assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: -270 as DecimalType});
+    }
+}

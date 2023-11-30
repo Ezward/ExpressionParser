@@ -1,12 +1,8 @@
-use std::{error::Error, fmt::Display, ops::Deref};
-
-use crate::scan::context::ScanPosition;
-
-use super::{error::{ParsingError, EvaluationError}, position::ParsePosition};
+use std::fmt::Display;
 
 pub type DecimalType = f64;
 pub type IntegerType = i32;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExpressionValue {
     NaN,
     Decimal {

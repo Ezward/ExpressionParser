@@ -1,12 +1,16 @@
-use std::ops::Deref;
-
 use super::{value::{ExpressionValue, DecimalType, IntegerType, SignType, Power}, position::ParsePosition};
 
-
-
+///
+/// evaluate an expression node to get an expression value
+///
 pub trait Evaluate {
     fn evaluate(&self) -> ExpressionValue;
 }
+
+///
+/// Get the start and end position of the expression
+/// in the original source.
+///
 pub trait Position {
     fn position(&self) -> ParsePosition;
 }
@@ -77,9 +81,9 @@ impl Position for ExpressionNode {
             ExpressionNode::Decimal { position, value: _ } => position.clone(),
             ExpressionNode::Parenthesis { position, sign: _, inner: _ } => position.clone(),
             ExpressionNode::Sum { position, operands: _ } => position.clone(),
-            ExpressionNode::Difference { position, operands } => position.clone(),
-            ExpressionNode::Product { position, operands } => position.clone(),
-            ExpressionNode::Quotient { position, operands } => position.clone(),
+            ExpressionNode::Difference { position, operands: _ } => position.clone(),
+            ExpressionNode::Product { position, operands: _ } => position.clone(),
+            ExpressionNode::Quotient { position, operands: _ } => position.clone(),
             ExpressionNode::Power { position, base: _, exponent: _ } => position.clone(),
         }
     }

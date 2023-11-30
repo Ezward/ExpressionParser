@@ -95,6 +95,13 @@ pub type ScanContext = (
 );
 
 ///
+/// return a scan context from beginning
+///
+pub fn beginning() -> ScanContext {
+    (true, ScanPosition::default())
+}
+
+///
 /// Scan for a literal string.
 /// - **s**: the string to scan
 /// - **context**: the current scanning state
