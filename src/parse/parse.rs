@@ -88,6 +88,13 @@ fn parse_whitespace(s: &str, context: ScanContext) -> Result<ScanContext, Parsin
 }
 
 ///
+/// expression ::= sum
+///
+fn parse_expression(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
+    parse_sum(s, context)
+}
+
+///
 ///  digit ::= [0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9]
 ///  sign ::= '-'
 ///  integer ::= {sign} [digit]*
@@ -158,7 +165,6 @@ fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, Expressio
 ///
 /// value ::= [parenthesis | number]
 /// parenthesis ::= {sign} '(' expression ')'
-/// expression ::= sum
 ///
 fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     //
@@ -177,10 +183,10 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
     (matched, position) = scan_literal(s, (true, position), "(");
     if matched {
         //
-        // TODO: temporarily just expect a number inside
+        // parse the expression inside the parenthesis
         //
         let inner_node: ExpressionNode;
-        ((matched, position), inner_node) = parse_sum(s, (true, position))?;
+        ((matched, position), inner_node) = parse_expression(s, (true, position))?;
 
         //
         // scan the required closing parenthesis
@@ -1093,4 +1099,101 @@ mod parse_tests {
             }),
         }, result_node);
     }
+
+    #[test]
+    fn test_parse_expression() {
+        let s = " ( 1234 ) - -2^16 - -( 30.0^2 + 78.0  ) ";
+        let start = ScanPosition::new(0, 0, 0, 0, 0);
+        let context = (true, start);
+
+        let (result_context, result_node) = parse_expression(s, context).unwrap();
+        // println!("{:?}", result_node);
+        let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
+        assert_eq!((true, expected_end), result_context);
+        assert_eq!(ExpressionNode::Difference {
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end
+            },
+            operands: vec!(
+                ExpressionNode::Parenthesis {
+                    position: ParsePosition {
+                        start: ScanPosition::new(1, 1, 0, 0, 0),
+                        end: ScanPosition::new(9, 9, 0, 0, 0)
+                    },
+                    sign: SignType::Positive,
+                    inner: Box::new(ExpressionNode::Integer {
+                        position: ParsePosition {
+                            start: ScanPosition::new(3, 3, 0, 0, 0),
+                            end: ScanPosition::new(7, 7, 0, 0, 0)
+                        },
+                        value: 1234 as IntegerType
+                    }),
+                },
+                ExpressionNode::Power {
+                    position: ParsePosition {
+                        start: ScanPosition::new(12, 12, 0, 0, 0),
+                        end: ScanPosition::new(17, 17, 0, 0, 0)
+                    },
+                    base: Box::new(ExpressionNode::Integer {
+                        position: ParsePosition {
+                            start: ScanPosition::new(12, 12, 0, 0, 0),
+                            end: ScanPosition::new(14, 14, 0, 0, 0)
+                        },
+                        value: -2 as IntegerType
+                    }),
+                    exponent: Box::new(ExpressionNode::Integer {
+                        position: ParsePosition {
+                            start: ScanPosition::new(15, 15, 0, 0, 0),
+                            end: ScanPosition::new(17, 17, 0, 0, 0)
+                        },
+                        value: 16 as IntegerType
+                    }),
+                },
+                ExpressionNode::Parenthesis {
+                    position: ParsePosition {
+                        start: ScanPosition::new(20, 20, 0, 0, 0),
+                        end: ScanPosition::new(39, 39, 0, 0, 0)
+                    },
+                    sign: SignType::Negative,
+                    inner: Box::new(ExpressionNode::Sum{
+                        position: ParsePosition {
+                            start: ScanPosition::new(23, 23, 0, 0, 0),
+                            end: ScanPosition::new(36, 36, 0, 0, 0)
+                        },
+                        operands: vec!(
+                            ExpressionNode::Power {
+                                position: ParsePosition {
+                                    start: ScanPosition::new(23, 23, 0, 0, 0),
+                                    end: ScanPosition::new(29, 29, 0, 0, 0)
+                                },
+                                base: Box::new(ExpressionNode::Decimal {
+                                    position: ParsePosition {
+                                        start: ScanPosition::new(23, 23, 0, 0, 0),
+                                        end: ScanPosition::new(27, 27, 0, 0, 0)
+                                    },
+                                    value: 30 as DecimalType
+                                }),
+                                exponent: Box::new(ExpressionNode::Integer {
+                                    position: ParsePosition {
+                                        start: ScanPosition::new(28, 28, 0, 0, 0),
+                                        end: ScanPosition::new(29, 29, 0, 0, 0)
+                                    },
+                                    value: 2 as IntegerType
+                                }),
+                            },
+                            ExpressionNode::Decimal {
+                                position: ParsePosition {
+                                    start: ScanPosition::new(32, 32, 0, 0, 0),
+                                    end: ScanPosition::new(36, 36, 0, 0, 0)
+                                },
+                                value: 78 as DecimalType
+                            },
+                        ),
+                    }),
+                },
+            )
+        }, result_node);
+    }
+
 }
