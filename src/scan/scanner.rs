@@ -86,7 +86,7 @@ pub fn scan_pair(
 ///     - char offset is offset after last matching char (aka total number of utf-8 chars matched)
 ///
 #[allow(unused)]
-fn scan_sequence<T>(
+fn scan_all<T>(
     s: &str,                // IN : the string to scan
     context: ScanContext,   // IN : scanning state
     scanners: T)            // IN : iterable collection of scanners to apply in order
@@ -113,6 +113,51 @@ fn scan_sequence<T>(
     }
     scanned
 }
+
+///
+/// Scan for match by applying a sequence of scanners in order.
+/// Scanning proceeds in the order the iterator provides that scanners
+/// and stops after a scanner is matched OR all scanners do not match.
+///
+/// - **s**: the string to scan
+/// - **context**: the current scanning state
+/// - **scanners**: a iterable collection of [Scanner] to apply in order
+/// - **returns**:
+///   - The scan result as a [ScanContext]
+///     - matched is true if a scanner matched (or there we no scanners)
+///     - matched is false all scanners did not match or if context's byte offset is out of range
+///     - byte offset is offset after last byte in last matching char (aka total number of bytes matched)
+///     - char offset is offset after last matching char (aka total number of utf-8 chars matched)
+///
+#[allow(unused)]
+fn scan_any<T>(
+    s: &str,                // IN : the string to scan
+    context: ScanContext,   // IN : scanning state
+    scanners: T)            // IN : iterable collection of scanners to apply in order
+    -> ScanContext          // RET: scan result as an ScanContext
+                            //      matched is true if all scanners matched
+                            //      matched if false if any scanner did not match
+                            //      byte offset after last byte in last matching char (aka number of bytes matched)
+                            //      char offset after last matching char (aka number of utf-8 chars matched)
+    where
+        T: IntoIterator,
+        T::Item: Scanner
+{
+    let (matched, position) = context;
+    if (!matched) || position.byte_index > s.len(){
+        return (false, position)
+    }
+
+    let mut scanned = context;
+    for scanner in scanners {
+        scanned = scanner.scan(s, scanned);
+        if scanned.0 {
+            break;
+        }
+    }
+    scanned
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -261,7 +306,7 @@ mod tests {
         //
         // scan variable name that starts with alphabetic the zero or more alphanumerics
         //
-        let result = scan_sequence(s, context, [scan_one_or_more_alphabetic, scan_zero_or_more_alphanumeric]);
+        let result = scan_all(s, context, [scan_one_or_more_alphabetic, scan_zero_or_more_alphanumeric]);
         assert_eq!((true, ScanPosition::new("foo123bar".len(), 9, 0, 0, 0)), result);
 
         //
@@ -269,7 +314,7 @@ mod tests {
         //
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
-        let result = scan_sequence(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
+        let result = scan_all(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
         assert_eq!((true, ScanPosition::new("foo123bar".len(), 9, 0, 0, 0)), result);
     }
 
@@ -284,7 +329,7 @@ mod tests {
         let context = (true, ScanPosition::new(s.len() + 69, s.chars().count() + 69, 0, 0, 0));
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
-        let result = scan_sequence(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
+        let result = scan_all(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
         assert_eq!((false, context.1), result)
     }
 
@@ -299,14 +344,14 @@ mod tests {
         let context = (true, ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0));
         let scan_1_or_more_alphabetic: ScannerFn = |s, c| scan_one_or_more_chars(s, c, |ch| ch.is_alphabetic());
         let scan_0_or_more_alphanumeric: ScannerFn = |s, c| scan_zero_or_more_chars(s, c, |ch| ch.is_alphanumeric());
-        let result = scan_sequence(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
+        let result = scan_all(s, context, [scan_1_or_more_alphabetic, scan_0_or_more_alphanumeric]);
         assert_eq!((false, context.1), result);
 
         //
         // scanning zero at end of input will still match
         //
         let scan_0_chars: ScannerFn = |s, c| scan_n_chars(s, c, 0, |ch| ch.is_alphanumeric());
-        let result = scan_sequence(s, context, [scan_0_chars, scan_0_chars]);
+        let result = scan_all(s, context, [scan_0_chars, scan_0_chars]);
         assert_eq!((true, ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0)), result);
     }
 
@@ -318,7 +363,7 @@ mod tests {
         //
         // scanner for a line
         //
-        let scan_line: ScannerFn = |st, ctx| scan_sequence(st, ctx, [
+        let scan_line: ScannerFn = |st, ctx| scan_all(st, ctx, [
             (|st, ctx| scan_zero_or_more_chars(st, ctx, |ch| ch.is_alphabetic())) as ScannerFn,
             (|st, ctx| scan_zero_or_more_chars(st, ctx, |ch| ch == '\r')) as ScannerFn,
             (|st, ctx| scan_n_chars(st, ctx, 1, |ch| ch == '\n')) as ScannerFn
@@ -327,7 +372,7 @@ mod tests {
         //
         // scan 3 lines
         //
-        let result = scan_sequence(s, context, [scan_line, scan_line, scan_line]);
+        let result = scan_all(s, context, [scan_line, scan_line, scan_line]);
         assert_eq!((true, ScanPosition::new(s.len(), s.chars().count(), 3, s.len(), s.chars().count())), result);
     }
 }

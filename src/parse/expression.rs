@@ -20,6 +20,8 @@ pub enum ExpressionNode {
     Parenthesis{ position: ParsePosition, sign: SignType, inner: Box<ExpressionNode> },
     Sum{ position: ParsePosition, operands: Vec<ExpressionNode> },
     Difference{ position: ParsePosition, operands: Vec<ExpressionNode> },
+    Product{ position: ParsePosition, operands: Vec<ExpressionNode> },
+    Quotient{ position: ParsePosition, operands: Vec<ExpressionNode> },
     Power{ position: ParsePosition, base: Box<ExpressionNode>, exponent: Box<ExpressionNode> },
 }
 
@@ -44,6 +46,20 @@ impl Evaluate for ExpressionNode {
                 }
                 difference
             },
+            ExpressionNode::Product { position: _, operands } => {
+                let mut product = operands[0].evaluate();
+                for addend in operands[1..].iter() {
+                    product *= addend.evaluate()
+                }
+                product
+            },
+            ExpressionNode::Quotient { position: _, operands } => {
+                let mut quotient = operands[0].evaluate();
+                for addend in operands[1..].iter() {
+                    quotient /= addend.evaluate()
+                }
+                quotient
+            },
             ExpressionNode::Power { position: _, base, exponent } => {
                 let base_value = base.evaluate();
                 let exponent_value = exponent.evaluate();
@@ -62,6 +78,8 @@ impl Position for ExpressionNode {
             ExpressionNode::Parenthesis { position, sign: _, inner: _ } => position.clone(),
             ExpressionNode::Sum { position, operands: _ } => position.clone(),
             ExpressionNode::Difference { position, operands } => position.clone(),
+            ExpressionNode::Product { position, operands } => position.clone(),
+            ExpressionNode::Quotient { position, operands } => position.clone(),
             ExpressionNode::Power { position, base: _, exponent: _ } => position.clone(),
         }
     }

@@ -203,7 +203,12 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
     }
 }
 
+///
+/// power ::= value{'^'value}
+///
 fn parse_power(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
+    const OPERATOR: &str = "^";
+
     //
     // skip any leading whitespace
     //
@@ -215,7 +220,7 @@ fn parse_power(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
     //
     // scan operator
     //
-    let (matched, position) = scan_literal(s, parse_whitespace(s, (matched, left_position))?, "^");
+    let (matched, position) = scan_literal(s, (matched, left_position), OPERATOR);
     if matched {
         // scan right side operand
         let ((_matched, right_position), right_node) = parse_value(s, (matched, position))?;
@@ -239,6 +244,8 @@ fn parse_power(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
 /// sum ::= difference {'+' difference}*
 ///
 fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
+    const OPERATOR: &str = "+";
+
     //
     // skip any leading whitespace
     //
@@ -251,7 +258,7 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
     //
     // scan operator
     //
-    let (mut matched, mut position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, "+");
+    let (mut matched, mut position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, OPERATOR);
     if matched {
         //
         // collect up all addends.
@@ -270,7 +277,7 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
             addends.push(parse_node);
 
             // scan next operator
-            (matched, position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, "+");
+            (matched, position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, OPERATOR);
         }
 
         Ok(((true, operand_position), ExpressionNode::Sum {
@@ -290,9 +297,123 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
 }
 
 ///
-/// sum ::= difference {'+' difference}*
+/// difference ::= product  {'-' product}*
 ///
 fn parse_difference(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
+    const OPERATOR: &str = "-";
+
+    //
+    // skip any leading whitespace
+    //
+    let (matched, start_position) = parse_whitespace(s, context)?;
+
+
+    let ((matched, mut operand_position), left_node) = parse_product(s, (matched, start_position))?;
+    let end_position = operand_position;
+
+    //
+    // scan operator
+    //
+    let (mut matched, mut position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, OPERATOR);
+    if matched {
+        //
+        // collect up all operands.
+        // - pull the expression node out of the Box in the ParseNode,
+        // - put it into the vector
+        // - put the vector into an sum expression node
+        //
+        let mut operands = vec!(left_node);
+        while matched {
+            let parse_node: ExpressionNode;
+
+            // scan next operand
+            ((matched, operand_position), parse_node) = parse_product(s, (matched, position))?;
+
+            // add it to the operands
+            operands.push(parse_node);
+
+            // scan next operator
+            (matched, position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, OPERATOR);
+        }
+
+        Ok(((true, operand_position), ExpressionNode::Difference {
+                position: ParsePosition::new(&start_position, &operand_position),
+                operands
+            }
+        ))
+
+
+    } else {
+        //
+        // no addition operand, so just return the left expression
+        //
+        Ok(((true, end_position), left_node))
+    }
+
+}
+
+///
+/// product ::= quotient {['×' | '*']  quotient}*
+///
+fn parse_product(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
+    const OPERATOR: &str = "*";
+
+    //
+    // skip any leading whitespace
+    //
+    let (matched, start_position) = parse_whitespace(s, context)?;
+
+
+    let ((matched, mut operand_position), left_node) = parse_quotient(s, (matched, start_position))?;
+    let end_position = operand_position;
+
+    //
+    // scan operator
+    //
+    let (mut matched, mut position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, OPERATOR);
+    if matched {
+        //
+        // collect up all operands.
+        // - pull the expression node out of the Box in the ParseNode,
+        // - put it into the vector
+        // - put the vector into an sum expression node
+        //
+        let mut operands = vec!(left_node);
+        while matched {
+            let parse_node: ExpressionNode;
+
+            // scan next operand
+            ((matched, operand_position), parse_node) = parse_quotient(s, (matched, position))?;
+
+            // add it to the operands
+            operands.push(parse_node);
+
+            // scan next operator
+            (matched, position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, OPERATOR);
+        }
+
+        Ok(((true, operand_position), ExpressionNode::Product {
+                position: ParsePosition::new(&start_position, &operand_position),
+                operands
+            }
+        ))
+
+
+    } else {
+        //
+        // no addition operand, so just return the left expression
+        //
+        Ok(((true, end_position), left_node))
+    }
+
+}
+
+///
+/// quotient ::= power {['÷' | '/'] power}*
+///
+fn parse_quotient(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
+    const OPERATOR: &str = "/";
+
     //
     // skip any leading whitespace
     //
@@ -305,15 +426,15 @@ fn parse_difference(s: &str, context: ScanContext) -> Result<(ScanContext, Expre
     //
     // scan operator
     //
-    let (mut matched, mut position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, "-");
+    let (mut matched, mut position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, OPERATOR);
     if matched {
         //
-        // collect up all addends.
+        // collect up all operands.
         // - pull the expression node out of the Box in the ParseNode,
         // - put it into the vector
         // - put the vector into an sum expression node
         //
-        let mut addends = vec!(left_node);
+        let mut operands = vec!(left_node);
         while matched {
             let parse_node: ExpressionNode;
 
@@ -321,26 +442,23 @@ fn parse_difference(s: &str, context: ScanContext) -> Result<(ScanContext, Expre
             ((matched, operand_position), parse_node) = parse_power(s, (matched, position))?;
 
             // add it to the operands
-            addends.push(parse_node);
+            operands.push(parse_node);
 
             // scan next operator
-            (matched, position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, "-");
+            (matched, position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, OPERATOR);
         }
 
-        Ok(((true, operand_position), ExpressionNode::Difference {
+        Ok(((true, operand_position), ExpressionNode::Quotient {
                 position: ParsePosition::new(&start_position, &operand_position),
-                operands: addends
+                operands
             }
         ))
-
-
     } else {
         //
         // no addition operand, so just return the left expression
         //
         Ok(((true, end_position), left_node))
     }
-
 }
 
 
@@ -797,6 +915,76 @@ mod parse_tests {
             )
         }, result_node);
     }
+
+    #[test]
+    fn test_parse_product() {
+        let s = " 2 * 3 ";
+        let start = ScanPosition::new(0, 0, 0, 0, 0);
+        let context = (true, start);
+
+        let (result_context, result_node) = parse_product(s, context).unwrap();
+        println!("{:?}", result_node);
+        let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
+        assert_eq!((true, expected_end), result_context);
+        assert_eq!(ExpressionNode::Product{
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end
+            },
+            operands: vec!(
+                ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(1, 1, 0, 0, 0),
+                        end: ScanPosition::new(2, 2, 0, 0, 0)
+                    },
+                    value: 2 as IntegerType
+                },
+                ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(5, 5, 0, 0, 0),
+                        end: ScanPosition::new(6, 6, 0, 0, 0)
+                    },
+                    value: 3 as IntegerType
+                }
+            )
+        }, result_node);
+    }
+
+
+    #[test]
+    fn test_parse_quotient() {
+        let s = " 2 / 3 ";
+        let start = ScanPosition::new(0, 0, 0, 0, 0);
+        let context = (true, start);
+
+        let (result_context, result_node) = parse_quotient(s, context).unwrap();
+        println!("{:?}", result_node);
+        let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
+        assert_eq!((true, expected_end), result_context);
+        assert_eq!(ExpressionNode::Quotient{
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end
+            },
+            operands: vec!(
+                ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(1, 1, 0, 0, 0),
+                        end: ScanPosition::new(2, 2, 0, 0, 0)
+                    },
+                    value: 2 as IntegerType
+                },
+                ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(5, 5, 0, 0, 0),
+                        end: ScanPosition::new(6, 6, 0, 0, 0)
+                    },
+                    value: 3 as IntegerType
+                }
+            )
+        }, result_node);
+    }
+
 
     #[test]
     fn test_parse_power() {
