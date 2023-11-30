@@ -245,7 +245,7 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
     let (matched, start_position) = parse_whitespace(s, context)?;
 
 
-    let ((matched, mut operand_position), left_node) = parse_power(s, (matched, start_position))?;
+    let ((matched, mut operand_position), left_node) = parse_difference(s, (matched, start_position))?;
     let end_position = operand_position;
 
     //
@@ -264,7 +264,7 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
             let parse_node: ExpressionNode;
 
             // scan next operand
-            ((matched, operand_position), parse_node) = parse_power(s, (matched, position))?;
+            ((matched, operand_position), parse_node) = parse_difference(s, (matched, position))?;
 
             // add it to the operands
             addends.push(parse_node);
@@ -274,6 +274,60 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
         }
 
         Ok(((true, operand_position), ExpressionNode::Sum {
+                position: ParsePosition::new(&start_position, &operand_position),
+                operands: addends
+            }
+        ))
+
+
+    } else {
+        //
+        // no addition operand, so just return the left expression
+        //
+        Ok(((true, end_position), left_node))
+    }
+
+}
+
+///
+/// sum ::= difference {'+' difference}*
+///
+fn parse_difference(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
+    //
+    // skip any leading whitespace
+    //
+    let (matched, start_position) = parse_whitespace(s, context)?;
+
+
+    let ((matched, mut operand_position), left_node) = parse_power(s, (matched, start_position))?;
+    let end_position = operand_position;
+
+    //
+    // scan operator
+    //
+    let (mut matched, mut position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, "-");
+    if matched {
+        //
+        // collect up all addends.
+        // - pull the expression node out of the Box in the ParseNode,
+        // - put it into the vector
+        // - put the vector into an sum expression node
+        //
+        let mut addends = vec!(left_node);
+        while matched {
+            let parse_node: ExpressionNode;
+
+            // scan next operand
+            ((matched, operand_position), parse_node) = parse_power(s, (matched, position))?;
+
+            // add it to the operands
+            addends.push(parse_node);
+
+            // scan next operator
+            (matched, position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, "-");
+        }
+
+        Ok(((true, operand_position), ExpressionNode::Difference {
                 position: ParsePosition::new(&start_position, &operand_position),
                 operands: addends
             }
@@ -575,6 +629,136 @@ mod parse_tests {
                     },
                     sign: SignType::Negative,
                     inner: Box::new(ExpressionNode::Sum{
+                        position: ParsePosition {
+                            start: ScanPosition::new(23, 23, 0, 0, 0),
+                            end: ScanPosition::new(36, 36, 0, 0, 0)
+                        },
+                        operands: vec!(
+                            ExpressionNode::Power {
+                                position: ParsePosition {
+                                    start: ScanPosition::new(23, 23, 0, 0, 0),
+                                    end: ScanPosition::new(29, 29, 0, 0, 0)
+                                },
+                                base: Box::new(ExpressionNode::Decimal {
+                                    position: ParsePosition {
+                                        start: ScanPosition::new(23, 23, 0, 0, 0),
+                                        end: ScanPosition::new(27, 27, 0, 0, 0)
+                                    },
+                                    value: 30 as DecimalType
+                                }),
+                                exponent: Box::new(ExpressionNode::Integer {
+                                    position: ParsePosition {
+                                        start: ScanPosition::new(28, 28, 0, 0, 0),
+                                        end: ScanPosition::new(29, 29, 0, 0, 0)
+                                    },
+                                    value: 2 as IntegerType
+                                }),
+                            },
+                            ExpressionNode::Decimal {
+                                position: ParsePosition {
+                                    start: ScanPosition::new(32, 32, 0, 0, 0),
+                                    end: ScanPosition::new(36, 36, 0, 0, 0)
+                                },
+                                value: 78 as DecimalType
+                            },
+                        ),
+                    }),
+                },
+            )
+        }, result_node);
+    }
+
+    #[test]
+    fn test_parse_difference() {
+        let s = " 2 - 3 ";
+        let start = ScanPosition::new(0, 0, 0, 0, 0);
+        let context = (true, start);
+
+        let (result_context, result_node) = parse_difference(s, context).unwrap();
+        println!("{:?}", result_node);
+        let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
+        assert_eq!((true, expected_end), result_context);
+        assert_eq!(ExpressionNode::Difference{
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end
+            },
+            operands: vec!(
+                ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(1, 1, 0, 0, 0),
+                        end: ScanPosition::new(2, 2, 0, 0, 0)
+                    },
+                    value: 2 as IntegerType
+                },
+                ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(5, 5, 0, 0, 0),
+                        end: ScanPosition::new(6, 6, 0, 0, 0)
+                    },
+                    value: 3 as IntegerType
+                }
+            )
+        }, result_node);
+    }
+
+    #[test]
+    fn test_parse_difference_complex() {
+        let s = " ( 1234 ) - -2^16 - -( 30.0^2 - 78.0  ) ";
+        let start = ScanPosition::new(0, 0, 0, 0, 0);
+        let context = (true, start);
+
+        let (result_context, result_node) = parse_difference(s, context).unwrap();
+        // println!("{:?}", result_node);
+        let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
+        assert_eq!((true, expected_end), result_context);
+        assert_eq!(ExpressionNode::Difference {
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end
+            },
+            operands: vec!(
+                ExpressionNode::Parenthesis {
+                    position: ParsePosition {
+                        start: ScanPosition::new(1, 1, 0, 0, 0),
+                        end: ScanPosition::new(9, 9, 0, 0, 0)
+                    },
+                    sign: SignType::Positive,
+                    inner: Box::new(ExpressionNode::Integer {
+                        position: ParsePosition {
+                            start: ScanPosition::new(3, 3, 0, 0, 0),
+                            end: ScanPosition::new(7, 7, 0, 0, 0)
+                        },
+                        value: 1234 as IntegerType
+                    }),
+                },
+                ExpressionNode::Power {
+                    position: ParsePosition {
+                        start: ScanPosition::new(12, 12, 0, 0, 0),
+                        end: ScanPosition::new(17, 17, 0, 0, 0)
+                    },
+                    base: Box::new(ExpressionNode::Integer {
+                        position: ParsePosition {
+                            start: ScanPosition::new(12, 12, 0, 0, 0),
+                            end: ScanPosition::new(14, 14, 0, 0, 0)
+                        },
+                        value: -2 as IntegerType
+                    }),
+                    exponent: Box::new(ExpressionNode::Integer {
+                        position: ParsePosition {
+                            start: ScanPosition::new(15, 15, 0, 0, 0),
+                            end: ScanPosition::new(17, 17, 0, 0, 0)
+                        },
+                        value: 16 as IntegerType
+                    }),
+                },
+                ExpressionNode::Parenthesis {
+                    position: ParsePosition {
+                        start: ScanPosition::new(20, 20, 0, 0, 0),
+                        end: ScanPosition::new(39, 39, 0, 0, 0)
+                    },
+                    sign: SignType::Negative,
+                    inner: Box::new(ExpressionNode::Difference{
                         position: ParsePosition {
                             start: ScanPosition::new(23, 23, 0, 0, 0),
                             end: ScanPosition::new(36, 36, 0, 0, 0)

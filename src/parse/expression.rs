@@ -19,6 +19,7 @@ pub enum ExpressionNode {
     Decimal{ position: ParsePosition, value: DecimalType },
     Parenthesis{ position: ParsePosition, sign: SignType, inner: Box<ExpressionNode> },
     Sum{ position: ParsePosition, operands: Vec<ExpressionNode> },
+    Difference{ position: ParsePosition, operands: Vec<ExpressionNode> },
     Power{ position: ParsePosition, base: Box<ExpressionNode>, exponent: Box<ExpressionNode> },
 }
 
@@ -35,6 +36,13 @@ impl Evaluate for ExpressionNode {
                     sum += addend.evaluate()
                 }
                 sum
+            },
+            ExpressionNode::Difference { position: _, operands } => {
+                let mut difference = operands[0].evaluate();
+                for addend in operands[1..].iter() {
+                    difference -= addend.evaluate()
+                }
+                difference
             },
             ExpressionNode::Power { position: _, base, exponent } => {
                 let base_value = base.evaluate();
@@ -53,6 +61,7 @@ impl Position for ExpressionNode {
             ExpressionNode::Decimal { position, value: _ } => position.clone(),
             ExpressionNode::Parenthesis { position, sign: _, inner: _ } => position.clone(),
             ExpressionNode::Sum { position, operands: _ } => position.clone(),
+            ExpressionNode::Difference { position, operands } => position.clone(),
             ExpressionNode::Power { position, base: _, exponent: _ } => position.clone(),
         }
     }
