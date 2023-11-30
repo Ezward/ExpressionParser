@@ -30,6 +30,40 @@ impl Display for ExpressionValue {
     }
 }
 
+pub trait Power<Rhs = Self> {
+    type Output;
+
+    /// Performs the `+` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!(12 + 1, 13);
+    /// ```
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    fn power(self, rhs: Rhs) -> Self::Output;
+}
+
+impl Power for ExpressionValue {
+    type Output = ExpressionValue;
+
+    fn power(self, rhs: Self) -> Self::Output {
+        match self {
+            ExpressionValue::NaN => ExpressionValue::NaN,
+            ExpressionValue::Decimal { value: left_value } => match rhs {
+                ExpressionValue::NaN => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: left_value.powf(value) },
+                ExpressionValue::Integer { value } => ExpressionValue::Decimal{ value: left_value.powf(value as DecimalType) },
+            },
+            ExpressionValue::Integer { value: left_value } => match rhs {
+                ExpressionValue::NaN => ExpressionValue::NaN,
+                ExpressionValue::Decimal { value } => ExpressionValue::Decimal{ value: (left_value as DecimalType).powf(value) },
+                ExpressionValue::Integer { value } => ExpressionValue::Integer{ value: (left_value as DecimalType).powi(value) as IntegerType },
+            },
+        }
+    }
+}
+
 ///
 /// ExpressionValue + ExpressionValue = ExpressionValue
 ///

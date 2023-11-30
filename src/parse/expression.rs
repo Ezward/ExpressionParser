@@ -1,8 +1,10 @@
-use super::{value::{ExpressionValue, DecimalType, IntegerType, SignType}, position::ParsePosition};
+use std::ops::Deref;
+
+use super::{value::{ExpressionValue, DecimalType, IntegerType, SignType, Power}, position::ParsePosition};
 
 
 
-pub trait Expression {
+pub trait Evaluate {
     fn evaluate(&self) -> ExpressionValue;
 }
 pub trait Position {
@@ -16,10 +18,11 @@ pub enum ExpressionNode {
     Integer{ position: ParsePosition, value: IntegerType },
     Decimal{ position: ParsePosition, value: DecimalType },
     Parenthesis{ position: ParsePosition, sign: SignType, inner: Box<ExpressionNode> },
-    Sum{ position: ParsePosition, operands: Vec<ExpressionNode> }
+    Sum{ position: ParsePosition, operands: Vec<ExpressionNode> },
+    Power{ position: ParsePosition, base: Box<ExpressionNode>, exponent: Box<ExpressionNode> },
 }
 
-impl Expression for ExpressionNode {
+impl Evaluate for ExpressionNode {
     fn evaluate(&self) -> ExpressionValue {
         match self {
             ExpressionNode::NaN => ExpressionValue::NaN,
@@ -33,6 +36,11 @@ impl Expression for ExpressionNode {
                 }
                 sum
             },
+            ExpressionNode::Power { position: _, base, exponent } => {
+                let base_value = base.evaluate();
+                let exponent_value = exponent.evaluate();
+                base_value.power(exponent_value)
+            },
         }
     }
 }
@@ -45,6 +53,7 @@ impl Position for ExpressionNode {
             ExpressionNode::Decimal { position, value: _ } => position.clone(),
             ExpressionNode::Parenthesis { position, sign: _, inner: _ } => position.clone(),
             ExpressionNode::Sum { position, operands: _ } => position.clone(),
+            ExpressionNode::Power { position, base: _, exponent: _ } => position.clone(),
         }
     }
 }
