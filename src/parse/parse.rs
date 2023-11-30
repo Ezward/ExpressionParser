@@ -9,8 +9,8 @@ use crate::scan::context::{
     scan_zero_or_more_chars
 };
 
-use crate::expression::position::ParsePosition;
-use crate::expression::error::ParsingError;
+use crate::parse::position::ParsePosition;
+use crate::parse::error::ParsingError;
 
 use super::expression::ExpressionNode;
 use super::value::SignType;
@@ -81,12 +81,6 @@ fn expect_match(s: &str, start_position: ScanPosition, context: ScanContext) -> 
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ParseNode {
-    pub position: ParsePosition, // position in source
-    pub value: Box<ExpressionNode>
-}
-
 
 
 fn parse_whitespace(s: &str, context: ScanContext) -> Result<ScanContext, ParsingError> {
@@ -94,7 +88,7 @@ fn parse_whitespace(s: &str, context: ScanContext) -> Result<ScanContext, Parsin
 }
 
 
-fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode), ParsingError> {
+fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     //
     // skip any leading whitespace
     //
@@ -133,28 +127,28 @@ fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode
     //
     // return the scanned value
     //
-    Ok(((true, position), ParseNode {
-        position: ParsePosition::new(&start_position, &position),
-        value: if (is_decimal || has_exponent) {
-            Box::new(ExpressionNode::Decimal{
+    Ok(((true, position), if is_decimal || has_exponent {
+            ExpressionNode::Decimal{
+                position: ParsePosition::new(&start_position, &position),
                 value: s[start_position.byte_index..position.byte_index].parse::<f64>().map_err(|err| {
                     println!("Error converting decimal number at {:?}: {}", ParsePosition::new(&start_position, &position), &err);
                     ParsingError::Number(ParsePosition::new(&start_position, &position))
                 })?
-            })
+            }
         } else {
             // integer
-            Box::new(ExpressionNode::Integer{
+            ExpressionNode::Integer{
+                position: ParsePosition::new(&start_position, &position),
                 value: s[start_position.byte_index..position.byte_index].parse::<i32>().map_err(|err| {
                     println!("Error converting integer at {:?}: {}", ParsePosition::new(&start_position, &position), &err);
                     ParsingError::Number(ParsePosition::new(&start_position, &position))
                 })?
-            })
+            }
         }
-    }))
+    ))
 }
 
-fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode), ParsingError> {
+fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     //
     // skip any leading whitespace
     //
@@ -173,7 +167,7 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode)
         //
         // TODO: temporarily just expect a number inside
         //
-        let inner_node: ParseNode;
+        let inner_node: ExpressionNode;
         ((matched, position), inner_node) = parse_value(s, (true, position))?;
 
         //
@@ -181,10 +175,12 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode)
         //
         (matched, position) = expect_match(s, start_position, scan_literal(s, parse_whitespace(s, (true, position))?, ")"))?;
 
-        Ok(((true, position), ParseNode {
-            position: ParsePosition::new(&start_position, &position),
-            value: Box::new(ExpressionNode::Parenthesis { sign: SignType::from(!is_negative), inner: inner_node.value })
-        }))
+        Ok(((true, position), ExpressionNode::Parenthesis {
+                position: ParsePosition::new(&start_position, &position),
+                sign: SignType::from(!is_negative),
+                inner: Box::new(inner_node),
+            }
+        ))
 
     } else {
         //
@@ -195,9 +191,14 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode)
     }
 }
 
-fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode), ParsingError> {
+fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
+    //
+    // skip any leading whitespace
+    //
+    let (matched, start_position) = parse_whitespace(s, context)?;
 
-    let ((matched, mut operand_position), left_node) = parse_value(s, context)?;
+
+    let ((matched, mut operand_position), left_node) = parse_value(s, (matched, start_position))?;
     let end_position = operand_position;
 
     //
@@ -211,24 +212,25 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode), 
         // - put it into the vector
         // - put the vector into an sum expression node
         //
-        let mut addends = vec!(left_node.value.deref().clone());
+        let mut addends = vec!(left_node);
         while matched {
-            let parse_node: ParseNode;
+            let parse_node: ExpressionNode;
 
             // scan next operand
             ((matched, operand_position), parse_node) = parse_value(s, (matched, position))?;
 
             // add it to the operands
-            addends.push(parse_node.value.deref().clone());
+            addends.push(parse_node);
 
             // scan next operator
             (matched, position) = scan_literal(s, parse_whitespace(s, (matched, operand_position))?, "+");
         }
 
-        Ok(((true, operand_position), ParseNode {
-            position: ParsePosition::new(&left_node.position.start, &operand_position),
-            value: Box::new(ExpressionNode::Sum { operands: addends  })
-        }))
+        Ok(((true, operand_position), ExpressionNode::Sum {
+                position: ParsePosition::new(&start_position, &operand_position),
+                operands: addends
+            }
+        ))
 
 
     } else {
@@ -243,7 +245,7 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ParseNode), 
 
 #[cfg(test)]
 mod parse_tests {
-    use crate::expression::value::{DecimalType, IntegerType, SignType};
+    use crate::parse::value::{DecimalType, IntegerType, SignType};
 
     use super::*;
 
@@ -256,9 +258,9 @@ mod parse_tests {
         let (result_context, result_node) = parse_number(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
+        assert_eq!(ExpressionNode::Integer{
             position: ParsePosition { start: start, end: expected_end },
-            value: Box::new(ExpressionNode::Integer { value: 1234 })
+            value: 1234
         }, result_node);
     }
 
@@ -271,9 +273,9 @@ mod parse_tests {
         let (result_context, result_node) = parse_number(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
+        assert_eq!(ExpressionNode::Decimal{
             position: ParsePosition { start: start, end: expected_end },
-            value: Box::new(ExpressionNode::Decimal { value: 1234 as DecimalType })
+            value: 1234 as DecimalType
         }, result_node);
     }
 
@@ -286,9 +288,9 @@ mod parse_tests {
         let (result_context, result_node) = parse_number(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
+        assert_eq!(ExpressionNode::Decimal{
             position: ParsePosition { start: start, end: expected_end },
-            value: Box::new(ExpressionNode::Decimal { value: 1234 as DecimalType })
+            value: 1234 as DecimalType
         }, result_node);
 
         let s = "123.4E1";
@@ -298,9 +300,9 @@ mod parse_tests {
         let (result_context, result_node) = parse_number(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len(), s.chars().count(), 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
+        assert_eq!(ExpressionNode::Decimal{
             position: ParsePosition { start: start, end: expected_end },
-            value: Box::new(ExpressionNode::Decimal { value: 1234 as DecimalType })
+            value: 1234 as DecimalType
         }, result_node);
     }
 
@@ -313,9 +315,19 @@ mod parse_tests {
         let (result_context, result_node) = parse_value(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
-            position: ParsePosition { start: start, end: expected_end },
-            value: Box::new(ExpressionNode::Parenthesis { sign: SignType::Positive, inner: Box::new(ExpressionNode::Integer { value: 1234 as IntegerType }) })
+        assert_eq!(ExpressionNode::Parenthesis{
+            position: ParsePosition {
+                start: start,
+                end: expected_end
+            },
+            sign: SignType::Positive,
+            inner: Box::new(ExpressionNode::Integer {
+                position: ParsePosition {
+                    start: ScanPosition::new(3, 3, 0, 0, 0),
+                    end: ScanPosition::new(7, 7, 0, 0, 0)
+                },
+                value: 1234 as IntegerType
+            })
         }, result_node);
     }
 
@@ -328,9 +340,19 @@ mod parse_tests {
         let (result_context, result_node) = parse_value(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
-            position: ParsePosition { start: start, end: expected_end },
-            value: Box::new(ExpressionNode::Parenthesis { sign: SignType::Positive, inner: Box::new(ExpressionNode::Integer { value: -1234 as IntegerType }) })
+        assert_eq!(ExpressionNode::Parenthesis{
+            position: ParsePosition {
+                start: start,
+                end: expected_end
+            },
+            sign: SignType::Positive,
+            inner: Box::new(ExpressionNode::Integer {
+                position: ParsePosition {
+                    start: ScanPosition::new(3, 3, 0, 0, 0),
+                    end: ScanPosition::new(8, 8, 0, 0, 0)
+                },
+                value: -1234 as IntegerType
+            })
         }, result_node);
     }
 
@@ -343,9 +365,19 @@ mod parse_tests {
         let (result_context, result_node) = parse_value(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len()- 1, s.chars().count() - 1, 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
-            position: ParsePosition { start: ScanPosition::new(1, 1, 0, 0, 0), end: expected_end },
-            value: Box::new(ExpressionNode::Parenthesis { sign: SignType::Positive, inner: Box::new(ExpressionNode::Decimal { value: -1234 as DecimalType }) })
+        assert_eq!(ExpressionNode::Parenthesis{
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end
+            },
+            sign: SignType::Positive,
+            inner: Box::new(ExpressionNode::Decimal {
+                position: ParsePosition {
+                    start: ScanPosition::new(3, 3, 0, 0, 0),
+                    end: ScanPosition::new(10, 10, 0, 0, 0)
+                },
+                value: -1234 as DecimalType
+            })
         }, result_node);
     }
 
@@ -358,9 +390,18 @@ mod parse_tests {
         let (result_context, result_node) = parse_value(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
-            position: ParsePosition { start: ScanPosition::new(1, 1, 0, 0, 0), end: expected_end },
-            value: Box::new(ExpressionNode::Parenthesis { sign: SignType::Negative, inner: Box::new(ExpressionNode::Integer { value: 1234 as IntegerType }) })
+        assert_eq!(ExpressionNode::Parenthesis{
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end },
+            sign: SignType::Negative,
+            inner: Box::new(ExpressionNode::Integer {
+                position: ParsePosition {
+                    start: ScanPosition::new(4, 4, 0, 0, 0),
+                    end: ScanPosition::new(8, 8, 0, 0, 0)
+                },
+                value: 1234 as IntegerType
+            })
         }, result_node);
     }
 
@@ -373,9 +414,26 @@ mod parse_tests {
         let (result_context, result_node) = parse_value(s, context).unwrap();
         let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
-            position: ParsePosition { start: ScanPosition::new(1, 1, 0, 0, 0), end: expected_end },
-            value: Box::new(ExpressionNode::Parenthesis { sign: SignType::Negative, inner: Box::new(ExpressionNode::Parenthesis { sign: SignType::Negative, inner: Box::new(ExpressionNode::Integer { value: 1234 as IntegerType }) }) })
+        assert_eq!(ExpressionNode::Parenthesis{
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end
+            },
+            sign: SignType::Negative,
+            inner: Box::new(ExpressionNode::Parenthesis {
+                position: ParsePosition {
+                    start: ScanPosition::new(4, 4, 0, 0, 0),
+                    end: ScanPosition::new(13, 13, 0, 0, 0)
+                },
+                sign: SignType::Negative,
+                inner: Box::new(ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(7, 7, 0, 0, 0),
+                        end: ScanPosition::new(11, 11, 0, 0, 0)
+                    },
+                    value: 1234 as IntegerType
+                })
+            })
         }, result_node);
     }
 
@@ -390,14 +448,27 @@ mod parse_tests {
         println!("{:?}", result_node);
         let expected_end = ScanPosition::new(s.len() - 1, s.chars().count() - 1, 0, 0, 0);
         assert_eq!((true, expected_end), result_context);
-        assert_eq!(ParseNode{
-            position: ParsePosition { start: ScanPosition::new(1, 1, 0, 0, 0), end: expected_end },
-            value: Box::new(ExpressionNode::Sum {
-                operands: vec!(
-                    ExpressionNode::Integer { value: 2 as IntegerType },
-                    ExpressionNode::Integer { value: 3 as IntegerType }
-                )
-            })
+        assert_eq!(ExpressionNode::Sum{
+            position: ParsePosition {
+                start: ScanPosition::new(1, 1, 0, 0, 0),
+                end: expected_end
+            },
+            operands: vec!(
+                ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(1, 1, 0, 0, 0),
+                        end: ScanPosition::new(2, 2, 0, 0, 0)
+                    },
+                    value: 2 as IntegerType
+                },
+                ExpressionNode::Integer {
+                    position: ParsePosition {
+                        start: ScanPosition::new(5, 5, 0, 0, 0),
+                        end: ScanPosition::new(6, 6, 0, 0, 0)
+                    },
+                    value: 3 as IntegerType
+                }
+            )
         }, result_node);
     }
 

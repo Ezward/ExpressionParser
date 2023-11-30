@@ -5,7 +5,7 @@ use crate::scan::context::ScanPosition;
 ///
 /// start and end of expression in source
 ///
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ParsePosition {
     pub start: ScanPosition,      // offset of start of expression in source
     pub end: ScanPosition,        // offset of end of expression in source
