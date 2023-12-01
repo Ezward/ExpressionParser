@@ -1,19 +1,27 @@
+use parse::{parse::parse, error::ParsingError};
 use scan::context::beginning;
 
-use crate::parse::parse::parse_expression;
-use crate::parse::expression::Evaluate;
+use crate::parse::expression::{Position, Evaluate};
 
 pub mod scan;
 pub mod parse;
 
-fn main() {
+fn main() -> Result<(), ParsingError> {
     let s = std::env::args().nth(1).expect("no expression provided");
-    match parse_expression(&s, beginning()) {
+    match parse(&s, beginning()) {
         Ok((_position, expression)) => {
-            println!("{}", expression.evaluate())
+            println!("{}", expression.evaluate());
+            Ok(())
         }
-        Err(err) => {
-            println!("Failure parsing expression {}", &err)
+        Err(e) => {
+            println!("{}", s);
+            if e.position().end.char_index - e.position().start.char_index > 1 {
+                println!("{}^{}", " ".repeat(e.position().start.char_index), "^".repeat(e.position().end.char_index - e.position().start.char_index - 1));
+            } else {
+                println!("{}^", " ".repeat(e.position().start.char_index));
+            }
+            println!("{}", e);
+            Err(e)
         }
     }
 }

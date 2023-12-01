@@ -15,7 +15,7 @@ pub enum ExpressionValue {
 impl Display for ExpressionValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExpressionValue::NaN => f.write_str("Nil"),
+            ExpressionValue::NaN => f.write_str("NaN"),
             ExpressionValue::Decimal { value } => {
                 f.write_fmt(format_args!("{}", value))
             },

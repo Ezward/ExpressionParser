@@ -1,11 +1,14 @@
 use crate::parse::position::ParsePosition;
 
+use super::expression::Position;
+
 
 #[allow(unused)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum ParsingError {
     Unknown(ParsePosition),
     EndOfInput(ParsePosition),
+    ExtraInput(ParsePosition),
     Number(ParsePosition),
 }
 impl std::fmt::Display for ParsingError {
@@ -15,7 +18,10 @@ impl std::fmt::Display for ParsingError {
                 f.write_fmt(format_args!("Unknown parsing error at {:?}", &position))
             },
             ParsingError::EndOfInput(position) => {
-                f.write_fmt(format_args!("Unexpected end of input at {:?}", &position))
+                f.write_fmt(format_args!("Unexpected end of input parsing expression at {:?}", &position))
+            },
+            ParsingError::ExtraInput(position) => {
+                f.write_fmt(format_args!("Unexpected input after expression at {:?}", &position))
             },
             ParsingError::Number(position) => {
                 f.write_fmt(format_args!("Error parsing number at {:?}", &position))
@@ -24,6 +30,17 @@ impl std::fmt::Display for ParsingError {
     }
 }
 impl std::error::Error for ParsingError {}
+
+impl Position for ParsingError {
+    fn position(&self) -> ParsePosition {
+        match self {
+            ParsingError::Unknown(position) => position.clone(),
+            ParsingError::EndOfInput(position) => position.clone(),
+            ParsingError::ExtraInput(position) => position.clone(),
+            ParsingError::Number(position) => position.clone(),
+        }
+    }
+}
 
 
 #[derive(Debug, Clone)]

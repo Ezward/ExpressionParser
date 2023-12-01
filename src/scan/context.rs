@@ -7,7 +7,7 @@
 //! #[test]
 //! fn test_scan_chars_ok_sequentially() {
 //!     let s = "foo\nbar";
-//!     let context = (true, ScanPosition::default());
+//!     let context = beginning();
 //!
 //!     //
 //!     // scan the first 'f' character using a lambda
