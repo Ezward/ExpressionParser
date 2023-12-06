@@ -1,6 +1,6 @@
-use crate::parse::position::ParsePosition;
+use crate::expression::position::ParsePosition;
 
-use super::expression::Position;
+use crate::expression::node::Position;
 
 
 #[allow(unused)]

@@ -1,9 +1,8 @@
 use crate::scan::context::ScanPosition;
 
-
-
 ///
-/// start and end of expression in source
+/// The start and end position of an expression in the original source.
+/// This will include all sub-expressions.
 ///
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ParsePosition {

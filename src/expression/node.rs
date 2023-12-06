@@ -1,3 +1,6 @@
+//!
+//! Abstract syntax tree for expressions
+//!
 use super::{value::{ExpressionValue, DecimalType, IntegerType, SignType, Power}, position::ParsePosition};
 
 ///

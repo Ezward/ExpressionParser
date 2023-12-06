@@ -1,59 +1,60 @@
-
-use crate::parse::expression::{Position, Evaluate};
+//!
+//! A simple expression parser and evaluator for the 4 operations and exponentiation.
+//!
+//! @author Ezward
+//!
+//! NOTE: this grammar separates out sums from differences and products from quotients.
+//!       Thus, it is not a traditional factor/term grammar.  The grammar is
+//!       designed to separate out operations that are subject to the associative
+//!       and commutative properties with the notion that the parse tree can
+//!       then be more easily queried or manipulated using those mathematical properties.
+//!
+//! Parses the following PEG grammar:
+//!
+//! ```
+//! digit ::= [0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9]
+//! sign ::= '-'
+//! integer ::= {sign} [digit]*
+//! decimal ::= {sign} [digit]* '.' [digit]*
+//! scientific ::= {sign} [digit]* {'.' [digit]*} ['e' | 'E'] {sign} [digit]*
+//! number ::= [integer | decimal | scientific]
+//! parenthesis ::= {sign} '(' expression ')'
+//! value ::= [parenthesis | number]
+//! power ::= value{'^'value}
+//! quotient ::= power {['÷' | '/'] power}*
+//! product ::= quotient {['×' | '*']  quotient}*
+//! difference ::= product  {'-' product}*
+//! sum ::= difference {'+' difference}*
+//! expression ::= sum
+//!
+//! Key to PEG notation:
+//! {} = optional, choose zero or one
+//! {}* = optional, 0 or more
+//! [] = required, choose one
+//! []* = required, 1 or more
+//!
+//! Usage:
+//!   let s = " (((10 + 5) * -6) - -20.0 / -2 * 3 + -((5*2)^2) - (-5 * -2 * 5)) ";
+//!   let (_result_context, result_node) = parse(s, beginning()).unwrap();
+//!   assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: -270 as DecimalType});
+//! ```
+//!
+use crate::expression::node::{Position, Evaluate};
 use crate::scan::context::{
     ScanPosition,
     ScanContext,
     scan_one_or_more_chars,
     scan_literal,
-    scan_zero_or_more_chars, self, beginning
+    scan_zero_or_more_chars
 };
 
-use crate::parse::position::ParsePosition;
-use crate::parse::error::ParsingError;
+use crate::expression::position::ParsePosition;
+use crate::expression::error::ParsingError;
 
-use super::expression::ExpressionNode;
+use super::node::ExpressionNode;
 use super::value::SignType;
 
 
-///
-/// A simple expression parser and evaluator for the 4 operations and exponentiation.
-///
-/// @author Ezward
-///
-/// NOTE: this grammar separates out sums from differences and products from quotients.
-///       Thus, it is not a traditional factor/term grammar.  The grammar is
-///       designed to separate out operations that are subject to the associative
-///       and commutative properties with the notion that the parse tree can
-///       then be more easily queried or manipulated using those mathematical properties.
-///
-/// Parses the following PEG grammar:
-///
-/// digit ::= [0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9]
-/// sign ::= '-'
-/// integer ::= {sign} [digit]*
-/// decimal ::= {sign} [digit]* '.' [digit]*
-/// scientific ::= {sign} [digit]* {'.' [digit]*} ['e' | 'E'] {sign} [digit]*
-/// number ::= [integer | decimal | scientific]
-/// parenthesis ::= {sign} '(' expression ')'
-/// value ::= [parenthesis | number]
-/// power ::= value{'^'value}
-/// quotient ::= power {['÷' | '/'] power}*
-/// product ::= quotient {['×' | '*']  quotient}*
-/// difference ::= product  {'-' product}*
-/// sum ::= difference {'+' difference}*
-/// expression ::= sum
-///
-/// Key to PEG notation:
-/// {} = optional, choose zero or one
-/// {}* = optional, 0 or more
-/// [] = required, choose one
-/// []* = required, 1 or more
-///
-/// Usage:
-///   let s = " (((10 + 5) * -6) - -20.0 / -2 * 3 + -((5*2)^2) - (-5 * -2 * 5)) ";
-///   let (_result_context, result_node) = parse_expression(s, beginning()).unwrap();
-///   assert_eq!(result_node.evaluate(), ExpressionValue::Decimal { value: -270 as DecimalType});
-///
 
 fn scan_whitespace(s: &str, context: ScanContext) -> ScanContext {
     scan_zero_or_more_chars(s, context, |ch| ch.is_ascii_whitespace())
@@ -112,7 +113,9 @@ pub fn parse(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
 
 ///
 /// Parse the expression and return where it ends.
+/// ```
 /// expression ::= sum
+/// ```
 ///
 pub fn parse_expression(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     parse_sum(s, context)
@@ -153,12 +156,16 @@ pub fn print_result(s: &str, context:ScanContext) {
 }
 
 ///
+/// Parse a number.
+///
+/// ```
 ///  digit ::= [0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9]
 ///  sign ::= '-'
 ///  integer ::= {sign} [digit]*
 ///  decimal ::= {sign} [digit]* '.' [digit]*
 ///  scientific ::= {sign} [digit]* {'.' [digit]*} ['e' | 'E'] {sign} [digit]*
 ///  number ::= [integer | decimal | scientific]
+/// ```
 ///
 fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     //
@@ -179,7 +186,7 @@ fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, Expressio
     //
     // scan the optional decimal part
     //
-    let mut is_decimal = false;
+    let is_decimal;
     (is_decimal, position) = scan_literal(s, (true, position), ".");
     if is_decimal {
         (_matched, position) = expect_match(s, start_position, scan_digits(s, (true, position)))?;
@@ -221,8 +228,12 @@ fn parse_number(s: &str, context: ScanContext) -> Result<(ScanContext, Expressio
 }
 
 ///
+/// Parse a parenthesized expression.
+///
+/// ```
 /// value ::= [parenthesis | number]
 /// parenthesis ::= {sign} '(' expression ')'
+/// ```
 ///
 fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     //
@@ -233,25 +244,26 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
     //
     // parse the optional negation
     //
-    let (is_negative, mut position) = scan_literal(s, (true, start_position), "-");
+    let (is_negative, mut position) = scan_literal(s, (matched, start_position), "-");
 
     //
     // scan opening brace
     //
-    (matched, position) = scan_literal(s, (true, position), "(");
+    (matched, position) = scan_literal(s, (matched, position), "(");
     if matched {
         //
         // parse the expression inside the parenthesis
         //
         let inner_node: ExpressionNode;
-        ((matched, position), inner_node) = parse_expression(s, (true, position))?;
+
+        ((matched, position), inner_node) = parse_expression(s, (matched, position))?;
 
         //
         // scan the required closing parenthesis
         //
-        (matched, position) = expect_match(s, start_position, scan_literal(s, parse_whitespace(s, (true, position))?, ")"))?;
+        (matched, position) = expect_match(s, start_position, scan_literal(s, parse_whitespace(s, (matched, position))?, ")"))?;
 
-        Ok(((true, position), ExpressionNode::Parenthesis {
+        Ok(((matched, position), ExpressionNode::Parenthesis {
                 position: ParsePosition::new(&start_position, &position),
                 sign: SignType::from(!is_negative),
                 inner: Box::new(inner_node),
@@ -268,7 +280,11 @@ fn parse_value(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
 }
 
 ///
+/// Parse an exponentiation expression.
+///
+/// ```
 /// power ::= value{'^'value}
+/// ```
 ///
 fn parse_power(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     const OPERATOR: &str = "^";
@@ -305,7 +321,11 @@ fn parse_power(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
 }
 
 ///
+/// Parse a series of addition operations.
+///
+/// ```
 /// sum ::= difference {'+' difference}*
+/// ```
 ///
 fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     const OPERATOR: &str = "+";
@@ -361,7 +381,11 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
 }
 
 ///
+/// Parse a series of subtraction operations.
+///
+/// ```
 /// difference ::= product  {'-' product}*
+/// ```
 ///
 fn parse_difference(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     const OPERATOR: &str = "-";
@@ -417,7 +441,11 @@ fn parse_difference(s: &str, context: ScanContext) -> Result<(ScanContext, Expre
 }
 
 ///
+/// Parse a series of multiplication operations.
+///
+/// ```
 /// product ::= quotient {['×' | '*']  quotient}*
+/// ```
 ///
 fn parse_product(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     const OPERATOR: &str = "*";
@@ -473,7 +501,11 @@ fn parse_product(s: &str, context: ScanContext) -> Result<(ScanContext, Expressi
 }
 
 ///
+/// Parse a series of division operations.
+///
+/// ```
 /// quotient ::= power {['÷' | '/'] power}*
+/// ```
 ///
 fn parse_quotient(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNode), ParsingError> {
     const OPERATOR: &str = "/";
@@ -528,7 +560,7 @@ fn parse_quotient(s: &str, context: ScanContext) -> Result<(ScanContext, Express
 
 #[cfg(test)]
 mod parse_tests {
-    use crate::parse::value::{DecimalType, IntegerType, SignType};
+    use crate::expression::value::{DecimalType, IntegerType, SignType};
 
     use super::*;
 
@@ -1257,7 +1289,7 @@ mod parse_tests {
 }
 #[cfg(test)]
 mod evaluation_tests {
-    use crate::{parse::{value::{DecimalType, ExpressionValue}, expression::{Evaluate, Position}}, scan::context::beginning};
+    use crate::{expression::{value::{DecimalType, ExpressionValue}, node::Evaluate}, scan::context::beginning};
 
     use super::*;
 

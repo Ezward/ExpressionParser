@@ -1,3 +1,9 @@
+//!
+//! Value type returned when an expression is evaluated.
+//! The module includes implementations of the
+//! add, sub, mul and div traits to make it easy to
+//! operate on ExpressValue instances directly.
+//!
 use std::fmt::Display;
 
 pub type DecimalType = f64;
@@ -29,12 +35,12 @@ impl Display for ExpressionValue {
 pub trait Power<Rhs = Self> {
     type Output;
 
-    /// Performs the `+` operation.
+    /// Performs the `^` operation.
     ///
     /// # Example
     ///
     /// ```
-    /// assert_eq!(12 + 1, 13);
+    /// assert_eq!(12 ^ 2, 144);
     /// ```
     #[must_use = "this returns the result of the operation, without modifying the original"]
     fn power(self, rhs: Rhs) -> Self::Output;

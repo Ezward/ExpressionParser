@@ -1,10 +1,10 @@
-use parse::{parse::parse, error::ParsingError};
+use expression::{parse::parse, error::ParsingError};
 use scan::context::beginning;
 
-use crate::parse::expression::{Position, Evaluate};
+use crate::expression::node::{Position, Evaluate};
 
 pub mod scan;
-pub mod parse;
+pub mod expression;
 
 fn main() -> Result<(), ParsingError> {
     let s = std::env::args().nth(1).expect("no expression provided");
