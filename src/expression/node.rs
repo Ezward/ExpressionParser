@@ -1,6 +1,8 @@
 //!
 //! Abstract syntax tree for expressions
 //!
+use std::fmt::{Display, write};
+
 use super::{value::{ExpressionValue, DecimalType, IntegerType, SignType, Power}, position::ParsePosition};
 
 ///
@@ -88,6 +90,61 @@ impl Position for ExpressionNode {
             ExpressionNode::Product { position, operands: _ } => position.clone(),
             ExpressionNode::Quotient { position, operands: _ } => position.clone(),
             ExpressionNode::Power { position, base: _, exponent: _ } => position.clone(),
+        }
+    }
+}
+
+impl Display for ExpressionNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExpressionNode::NaN => f.write_str(&ExpressionValue::NaN.to_string()),
+            ExpressionNode::Integer { position, value } => f.write_fmt(format_args!("{}", &value)),
+            ExpressionNode::Decimal { position, value } => f.write_fmt(format_args!("{}", &value)),
+            ExpressionNode::Parenthesis { position, sign, inner } => {
+                match sign {
+                    SignType::Negative => f.write_fmt(format_args!("-({})", &inner)),
+                    SignType::Positive => f.write_fmt(format_args!("({})", &inner)),
+                }
+            },
+            ExpressionNode::Sum { position, operands } => {
+                if operands.len() > 0 {
+                    write(f, format_args!("{}", &operands[0]))?;
+                    for operand in operands {
+                        write(f, format_args!(" + {}", operand))?;
+                    }
+                }
+                Ok(())
+            },
+            ExpressionNode::Difference { position, operands } => {
+                if operands.len() > 0 {
+                    write(f, format_args!("{}", &operands[0]))?;
+                    for operand in operands {
+                        write(f, format_args!(" - {}", operand))?;
+                    }
+                }
+                Ok(())
+            },
+            ExpressionNode::Product { position, operands } => {
+                if operands.len() > 0 {
+                    write(f, format_args!("{}", &operands[0]))?;
+                    for operand in operands {
+                        write(f, format_args!(" * {}", operand))?;
+                    }
+                }
+                Ok(())
+            },
+            ExpressionNode::Quotient { position, operands } => {
+                if operands.len() > 0 {
+                    write(f, format_args!("{}", &operands[0]))?;
+                    for operand in operands {
+                        write(f, format_args!(" / {}", operand))?;
+                    }
+                }
+                Ok(())
+            },
+            ExpressionNode::Power { position, base, exponent } => {
+                f.write_fmt(format_args!("{}^{}", &base, &exponent))
+            },
         }
     }
 }
