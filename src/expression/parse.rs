@@ -313,7 +313,7 @@ fn parse_power(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
         ))
     } else {
         //
-        // no addition operand, so just return the left expression
+        // no operand, so just return the left expression
         //
         Ok(((true, left_position), left_node))
     }
@@ -373,7 +373,7 @@ fn parse_sum(s: &str, context: ScanContext) -> Result<(ScanContext, ExpressionNo
 
     } else {
         //
-        // no addition operand, so just return the left expression
+        // no operand, so just return the left expression
         //
         Ok(((true, end_position), left_node))
     }
@@ -433,7 +433,7 @@ fn parse_difference(s: &str, context: ScanContext) -> Result<(ScanContext, Expre
 
     } else {
         //
-        // no addition operand, so just return the left expression
+        // no operand, so just return the left expression
         //
         Ok(((true, end_position), left_node))
     }
@@ -493,7 +493,7 @@ fn parse_product(s: &str, context: ScanContext) -> Result<(ScanContext, Expressi
 
     } else {
         //
-        // no addition operand, so just return the left expression
+        // no operand, so just return the left expression
         //
         Ok(((true, end_position), left_node))
     }
@@ -551,7 +551,7 @@ fn parse_quotient(s: &str, context: ScanContext) -> Result<(ScanContext, Express
         ))
     } else {
         //
-        // no addition operand, so just return the left expression
+        // no operand, so just return the left expression
         //
         Ok(((true, end_position), left_node))
     }
