@@ -5,6 +5,9 @@ use crate::expression::node::{Position, Evaluate};
 
 pub mod scan;
 pub mod expression;
+// pub mod commute;
+// pub mod helpers;
+pub mod collection;
 
 fn main() -> Result<(), ParsingError> {
     let s = std::env::args().nth(1).expect("no expression provided");
