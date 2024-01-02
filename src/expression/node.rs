@@ -98,15 +98,15 @@ impl Display for ExpressionNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ExpressionNode::NaN => f.write_str(&ExpressionValue::NaN.to_string()),
-            ExpressionNode::Integer { position, value } => f.write_fmt(format_args!("{}", &value)),
-            ExpressionNode::Decimal { position, value } => f.write_fmt(format_args!("{}", &value)),
-            ExpressionNode::Parenthesis { position, sign, inner } => {
+            ExpressionNode::Integer { position: _, value } => f.write_fmt(format_args!("{}", &value)),
+            ExpressionNode::Decimal { position: _, value } => f.write_fmt(format_args!("{}", &value)),
+            ExpressionNode::Parenthesis { position: _, sign, inner } => {
                 match sign {
                     SignType::Negative => f.write_fmt(format_args!("-({})", &inner)),
                     SignType::Positive => f.write_fmt(format_args!("({})", &inner)),
                 }
             },
-            ExpressionNode::Sum { position, operands } => {
+            ExpressionNode::Sum { position: _, operands } => {
                 if operands.len() > 0 {
                     write(f, format_args!("{}", &operands[0]))?;
                     for operand in operands {
@@ -115,7 +115,7 @@ impl Display for ExpressionNode {
                 }
                 Ok(())
             },
-            ExpressionNode::Difference { position, operands } => {
+            ExpressionNode::Difference { position: _, operands } => {
                 if operands.len() > 0 {
                     write(f, format_args!("{}", &operands[0]))?;
                     for operand in operands {
@@ -124,7 +124,7 @@ impl Display for ExpressionNode {
                 }
                 Ok(())
             },
-            ExpressionNode::Product { position, operands } => {
+            ExpressionNode::Product { position: _, operands } => {
                 if operands.len() > 0 {
                     write(f, format_args!("{}", &operands[0]))?;
                     for operand in operands {
@@ -133,7 +133,7 @@ impl Display for ExpressionNode {
                 }
                 Ok(())
             },
-            ExpressionNode::Quotient { position, operands } => {
+            ExpressionNode::Quotient { position: _, operands } => {
                 if operands.len() > 0 {
                     write(f, format_args!("{}", &operands[0]))?;
                     for operand in operands {
@@ -142,7 +142,7 @@ impl Display for ExpressionNode {
                 }
                 Ok(())
             },
-            ExpressionNode::Power { position, base, exponent } => {
+            ExpressionNode::Power { position: _, base, exponent } => {
                 f.write_fmt(format_args!("{}^{}", &base, &exponent))
             },
         }
