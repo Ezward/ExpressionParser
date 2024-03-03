@@ -5,16 +5,35 @@
 //!       struct as T then you will want to wrap it
 //!       in an RC() to avoid a lot copying.
 //!
-use std::{rc::Rc, fmt::Debug};
+use std::{borrow::Borrow, fmt::Debug, rc::Rc};
 
-type ListLink<T> = Option<Rc<LinkNode<T>>>;
 
+// A link in a linked list.
+// If the wrapped Option is a Some then
+// then the link leads to the next node in the list.
+// Otherwise, when the wrapped option is a None,
+// the the link is a terminal link.
+type ListLink<T> = Rc<Option<LinkNode<T>>>;
+
+// a node in a linked list
 #[derive(Debug, Clone, PartialEq)]
 struct LinkNode<T> {
     elem: T,
     tail: ListLink<T>,
 }
 
+impl <T> LinkNode<T> {
+    // construct a terminal node
+    fn null() -> Rc<Option<T>> {
+        Rc::new(None)
+    }
+}
+
+// A linked list.
+// This structure wraps the head node
+// and the length of the list.
+// This allows us to return the
+// length of the list in constant time.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LinkList<T> {
     size: usize,
@@ -26,7 +45,7 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
     /// Create a new empty list
     ///
     pub fn new() -> LinkList<T> {
-        LinkList::<T>{size: 0, list: None}
+        LinkList::<T>{size: 0, list: LinkNode::null()}
     }
 
     pub fn of_one(elem: T) -> LinkList<T> {
@@ -87,9 +106,9 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
     pub fn tail(&self) -> Option<LinkList<T>> {
         match self.list.as_ref() {
             Some(node) => {
-                match &node.tail {
-                    Some(tail) => {
-                        Some(LinkList{size: self.size - 1, list: Some(tail.clone())})
+                match &node.tail.borrow() {
+                    Some(_) => {
+                        Some(LinkList{size: self.size - 1, list: node.tail.clone()})
                     },
                     None => Some(LinkList::new()),  // empty list
                 }
@@ -103,11 +122,11 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
     ///
     pub fn insert(&self, elem: T) -> LinkList<T> {
         match self.list.as_ref() {
-            Some(node) => {
-                LinkList{size: self.size + 1, list: Some(Rc::new(LinkNode{elem: elem, tail: Some(node.clone())}))}
+            Some(_) => {
+                LinkList{size: self.size + 1, list: Rc::new(Some(LinkNode{elem: elem, tail: self.list.clone()}))}
             },
             None => {
-                LinkList{size: 1, list: Some(Rc::new(LinkNode{elem: elem, tail: None}))}
+                LinkList{size: 1, list: Rc::new(Some(LinkNode{elem: elem, tail: LinkNode::null()}))}
             },
         }
     }
@@ -162,18 +181,18 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
     pub fn reverse(&self) -> LinkList<T> {
         match self.list.as_ref() {
             Some(head) => {
-                let mut reversed = Rc::new(LinkNode{elem: head.elem.clone(), tail: None});
+                let mut reversed = Rc::new(Some(LinkNode{elem: head.elem.clone(), tail: LinkNode::null()}));
                 let mut list = head;
                 loop {
                     match list.tail.as_ref() {
                         None => break,
                         Some(tail) => {
-                            reversed = Rc::new(LinkNode{elem: tail.elem.clone(), tail: Some(reversed)});
+                            reversed = Rc::new(Some(LinkNode{elem: tail.elem.clone(), tail: reversed}));
                             list = tail;
                         },
                     }
                 }
-                LinkList{size: self.size, list: Some(reversed)}
+                LinkList{size: self.size, list: reversed}
             },
             None => LinkList::new(),
         }
@@ -455,7 +474,7 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
         mapped_list.reverse() // un-reverse it.
     }
 
-    	/**
+    /**
      * Filter a list given a predicate.
      *
      * @param predicate
