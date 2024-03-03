@@ -274,3 +274,5 @@ impl From<SignType> for IntegerType {
         }
     }
 }
+
+// TODO: port the parser test from https://github.com/Ezward/ExpressionCalculator/blob/master/test/com/lumpofcode/expression/ExpressionParserTest.java
