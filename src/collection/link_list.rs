@@ -13,13 +13,13 @@ use std::{borrow::Borrow, fmt::Debug, rc::Rc};
 // then the link leads to the next node in the list.
 // Otherwise, when the wrapped option is a None,
 // the the link is a terminal link.
-type ListLink<T> = Rc<Option<LinkNode<T>>>;
+type Link<T> = Rc<Option<LinkNode<T>>>;
 
 // a node in a linked list
 #[derive(Debug, Clone, PartialEq)]
 struct LinkNode<T> {
     elem: T,
-    tail: ListLink<T>,
+    tail: Link<T>,
 }
 
 impl <T> LinkNode<T> {
@@ -37,7 +37,7 @@ impl <T> LinkNode<T> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LinkList<T> {
     size: usize,
-    list: ListLink<T>,
+    list: Link<T>,
 }
 
 impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
