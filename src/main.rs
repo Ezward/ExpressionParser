@@ -7,8 +7,8 @@ use crate::expression::node::{Evaluate, Position};
 
 pub mod scan;
 pub mod expression;
-// pub mod commute;
-// pub mod helpers;
+pub mod commute;
+pub mod helpers;
 pub mod collection;
 
 fn main() -> Result<(), ParsingError> {
