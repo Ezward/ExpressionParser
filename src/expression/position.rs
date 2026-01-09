@@ -16,4 +16,10 @@ impl ParsePosition {
             end: *end
         }
     }
+    pub fn beginning() -> ParsePosition {
+        ParsePosition{
+            start: ScanPosition::default(),
+            end: ScanPosition::default(),
+        }
+    }
 }
