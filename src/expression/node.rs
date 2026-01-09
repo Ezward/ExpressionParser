@@ -148,3 +148,6 @@ impl Display for ExpressionNode {
         }
     }
 }
+
+
+// TODO: implement format full parenthesis like
