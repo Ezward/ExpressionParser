@@ -81,9 +81,16 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
     }
 
     ///
+    /// Determine if the list is not empty
+    ///
+    pub fn is_not_empty(&self) -> bool {
+        self.list.is_some()
+    }
+
+    ///
     /// Number of nodes in the list
     ///
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.size
     }
 
@@ -143,7 +150,7 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
      */
     pub fn insert_at(&self, index: usize, elem: T) -> LinkList<T>
     {
-        if index >= self.size() {
+        if index >= self.len() {
             self.append(elem)
         }
         else if index == 0 {
@@ -228,7 +235,7 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
      */
     pub fn remove_at(&self, index: usize) -> LinkList<T>
     {
-        if self.is_empty() || index >= self.size() {
+        if self.is_empty() || index >= self.len() {
             return self.clone()
         }
 
@@ -263,7 +270,7 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
      * @return list starting at nth element or empty list if n >= length
      */
     pub fn nth(&self, n: usize) -> LinkList<T>{
-        if n >= self.size() {
+        if n >= self.len() {
             return LinkList::new();
         }
 
@@ -291,8 +298,8 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
         if self.is_empty() { return LinkList::new() }
         if i == j { return self.clone() } // nothing to swap
         if i > j { return self.swap(j, i) }  // want i < j
-        if i >= self.size() { return self.clone() }
-        if j >= self.size() { return self.remove_at(i) }
+        if i >= self.len() { return self.clone() }
+        if j >= self.len() { return self.remove_at(i) }
 
         //
         // 1. get list up to ith element
@@ -390,7 +397,7 @@ impl <T> LinkList<T> where T: Clone + Debug + PartialEq {
         if self.is_empty() {
             // empty list has zero permutations
         }
-        else if self.size() == 1 {
+        else if self.len() == 1 {
             // single element list has one permutation
             results = results.insert(self.clone());
         }
@@ -642,7 +649,7 @@ mod tests {
         let list = LinkList::<i32>::new();
         println!("{:#?}", list);
 
-        assert_eq!(list.size(), 0);
+        assert_eq!(list.len(), 0);
         assert!(list.is_empty());
         assert_eq!(list.head(), None);
         assert_eq!(list.tail(), None);
@@ -655,7 +662,7 @@ mod tests {
         let list = list.insert(one.clone());
         println!("{:#?}", list);
 
-        assert_eq!(list.size(), 1);
+        assert_eq!(list.len(), 1);
         assert!(!list.is_empty());
         assert!(list.list.is_some());
         assert_eq!(list.head().unwrap(), one);
@@ -670,7 +677,7 @@ mod tests {
         let list = list.insert(two.clone()).insert(one.clone());
         println!("{:#?}", list);
 
-        assert_eq!(list.size(), 2);
+        assert_eq!(list.len(), 2);
         assert!(!list.is_empty());
         assert!(list.list.is_some());
         assert_eq!(list.head().unwrap(), one);
@@ -717,21 +724,21 @@ mod tests {
     #[test]
     fn test_size() {
         let list = LinkList::<i32>::new();
-        assert_eq!(list.size(), 0);
+        assert_eq!(list.len(), 0);
 
         let list = list.insert(1);
-        assert_eq!(list.size(), 1);
+        assert_eq!(list.len(), 1);
         let list = list.insert(2);
-        assert_eq!(list.size(), 2);
+        assert_eq!(list.len(), 2);
         let list = list.insert(3);
-        assert_eq!(list.size(), 3);
+        assert_eq!(list.len(), 3);
 
         let list = list.tail().unwrap();
-        assert_eq!(list.size(), 2);
+        assert_eq!(list.len(), 2);
         let list = list.tail().unwrap();
-        assert_eq!(list.size(), 1);
+        assert_eq!(list.len(), 1);
         let list = list.tail().unwrap();
-        assert_eq!(list.size(), 0);
+        assert_eq!(list.len(), 0);
     }
 
     #[test]
@@ -740,7 +747,7 @@ mod tests {
         let list = list.insert(2).insert(1);
         let list = list.reverse();
 
-        assert_eq!(list.size(), 2);
+        assert_eq!(list.len(), 2);
         assert!(!list.is_empty());
         assert!(list.list.is_some());
         assert_eq!(list, LinkList::<i32>::new().insert(1).insert(2));
@@ -767,7 +774,7 @@ mod tests {
 
         let one = Data{value: "one".to_string()};
         let two = Data{value: "two".to_string()};
-        assert_eq!(list.size(), 2);
+        assert_eq!(list.len(), 2);
         assert!(!list.is_empty());
         assert!(list.list.is_some());
         assert_eq!(list.head().unwrap().as_ref(), &two);
@@ -785,7 +792,7 @@ mod tests {
         // appending to empty list
         //
         let list = list.append(one.clone());
-        assert_eq!(list.size(), 1);
+        assert_eq!(list.len(), 1);
         assert!(!list.is_empty());
         assert!(list.list.is_some());
         assert_eq!(list.head().unwrap(), one);
@@ -794,7 +801,7 @@ mod tests {
         // appending to list of one
         //
         let list = list.append(two.clone());
-        assert_eq!(list.size(), 2);
+        assert_eq!(list.len(), 2);
         assert!(!list.is_empty());
         assert!(list.list.is_some());
         assert_eq!(list.head().unwrap(), one);
@@ -804,7 +811,7 @@ mod tests {
         // appending to list of two
         //
         let list = list.append(three.clone());
-        assert_eq!(list.size(), 3);
+        assert_eq!(list.len(), 3);
         assert!(!list.is_empty());
         assert!(list.list.is_some());
         assert_eq!(list.head().unwrap(), one);
@@ -818,7 +825,7 @@ mod tests {
         let list2 = LinkList::<i32>::new().insert(4).insert(3);  // 3,4
 
         let list = list1.concat(&list2); // 1,2,3,4
-        assert_eq!(list.size(), 4);
+        assert_eq!(list.len(), 4);
         assert!(!list.is_empty());
         assert_eq!(list.head(), Some(1));
         let list = list.tail().unwrap();
@@ -840,7 +847,7 @@ mod tests {
         // concatenating to an empty list is the other list
         //
         let list = LinkList::<i32>::new().concat(&list1);
-        assert_eq!(list.size(), list1.size());
+        assert_eq!(list.len(), list1.len());
         assert!(!list.is_empty());
         assert_eq!(list, list1);
         assert_eq!(list.head(), Some(1));
@@ -853,7 +860,7 @@ mod tests {
         // concatenating an empty list is the original list
         //
         let list = list1.concat(&LinkList::<i32>::new());
-        assert_eq!(list.size(), list1.size());
+        assert_eq!(list.len(), list1.len());
         assert!(!list.is_empty());
         assert_eq!(list, list1);
         assert_eq!(list.head(), Some(1));
@@ -928,7 +935,7 @@ mod tests {
             permutation = permutation.tail().unwrap();
         }
 
-        assert_eq!(24, permutations.size());
+        assert_eq!(24, permutations.len());
 
         let values = LinkList::<LinkList::<String>>::new()
         .insert(LinkList::<String>::new().append("A".to_string()).append("B".to_string()).append("C".to_string()).append("D".to_string()))
@@ -991,13 +998,13 @@ mod tests {
 
         // filter out the even values, leaving the odd
         let filtered = list.filter(|i| 1 == i % 2);
-        assert!(2 == filtered.size());      // "filtered list has two elements",
+        assert!(2 == filtered.len());      // "filtered list has two elements",
         assert!(1 == filtered.head().unwrap());        // "first item in filtered list is 1",
         assert!(3 == filtered.tail().unwrap().head().unwrap());   // "second item in filtered list is 3",
 
         // filter out the odd values, leaving the event
         let filtered = list.filter(|i| 0 == i % 2);
-        assert!(1 == filtered.size());  // "filtered list has two elements",
+        assert!(1 == filtered.len());  // "filtered list has two elements",
         assert!(2 == filtered.head().unwrap());    // "first item in filtered list is 2",
 
         // empty list yields empty list
@@ -1074,7 +1081,7 @@ mod tests {
             LinkList::<char>::of_four('d', 'e', 'f', '2'),
         );
 
-        assert_eq!(4, combinations.size()); // "There should be 4 combinations.",
+        assert_eq!(4, combinations.len()); // "There should be 4 combinations.",
         let mut combinations = combinations.clone();
         while !combinations.is_empty() {
             let combination = combinations.head().unwrap();
@@ -1106,7 +1113,7 @@ mod tests {
             LinkList::<char>::of_three('b', 'd', 'f'),
         );
 
-        assert_eq!(8, combinations.size()); // "There should be 8 combinations.",
+        assert_eq!(8, combinations.len()); // "There should be 8 combinations.",
         let mut combinations = combinations.clone();
         while !combinations.is_empty() {
             let combination = combinations.head().unwrap();
