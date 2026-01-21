@@ -290,20 +290,18 @@ fn parse_power(s: &str, context: ScanContext) -> Result<(ScanContext, Expression
     const OPERATOR: &str = "^";
 
     //
-    // skip any leading whitespace
+    // skip any leading whitespace, then parse left side operand
     //
     let (matched, start_position) = parse_whitespace(s, context)?;
-
-
     let ((matched, left_position), left_node) = parse_value(s, (matched, start_position))?;
 
     //
-    // scan operator
+    // scan operator; if found, parse right side operand, otherwise return left side operand
     //
-    let (matched, position) = scan_literal(s, (matched, left_position), OPERATOR);
+    let (matched, operator_position) = scan_literal(s, parse_whitespace(s, (matched, left_position))?, OPERATOR);
     if matched {
         // scan right side operand
-        let ((_matched, right_position), right_node) = parse_value(s, (matched, position))?;
+        let ((_matched, right_position), right_node) = parse_value(s, parse_whitespace(s, (matched, operator_position))?)?;
 
         Ok(((true, right_position), ExpressionNode::Power {
                 position: ParsePosition::new(&start_position, &right_position),
